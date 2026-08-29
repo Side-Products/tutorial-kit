@@ -1,0 +1,32 @@
+{
+	"name": "tutorial-kit",
+	"version": "0.1.0",
+	"description": "Automated product tutorial pipeline: drive a web app with Playwright, capture crisp footage and ground-truth events, narrate with AI, compose and render with Remotion. Emits videos plus agent-executable guides.",
+	"type": "module",
+	"bin": {
+		"tutorial-kit": "bin/tutorial-kit.js",
+		"tkit": "bin/tutorial-kit.js"
+	},
+	"files": [
+		"bin",
+		"src",
+		"assets",
+		"templates",
+		"README.md"
+	],
+	"engines": {
+		"node": ">=20"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"@ffmpeg-installer/ffmpeg": "^1.1.0",
+		"@remotion/bundler": "4.0.509",
+		"@remotion/cli": "4.0.509",
+		"@remotion/renderer": "4.0.509",
+		"playwright": "1.49.1",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
+		"remotion": "4.0.509",
+		"sharp": "^0.33.5"
+	}
+}
