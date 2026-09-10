@@ -37,7 +37,9 @@ export function eventsDigest(events) {
 function buildPrompt(events, config) {
 	const brand = config.brand?.name || "the product";
 	const steps = events.steps.map((s) => {
-		const secs = Math.max(2.5, (s.tEnd - s.tStart) * 0.8);
+		// Cap the budget: raw duration includes capture stalls and waitLong windows that the solver
+		// compresses to seconds, so an uncapped budget writes half-minute paragraphs for a 5s step.
+		const secs = Math.min(12, Math.max(2.5, (s.tEnd - s.tStart) * 0.8));
 		const budget = Math.max(8, Math.round(secs * WORDS_PER_SEC));
 		const acts = s.actions.map(describeAction).filter(Boolean);
 		return { id: s.stepId, hint: s.sayHint, page: new URL(s.urlAfter).pathname, actions: acts, wordBudget: budget };
@@ -49,7 +51,9 @@ function buildPrompt(events, config) {
 - NEVER use an em dash or en dash anywhere. Use commas or periods.
 - Do not read UI labels robotically; fold them in naturally.
 - Respect each step's wordBudget (a few words under is better than over).
-- Intro: one or two sentences framing the outcome (max 24 words). Outro: one sentence wrap plus where to go next (max 22 words).
+- Intro and outro play over title cards with no screen action, so they must be short or the card
+  overstays. Intro: one sentence naming the outcome (max 14 words). Outro: one short sign-off
+  (max 10 words), no recap of the steps.
 Return JSON: {"intro": "...", "steps": [{"id": "...", "narration": "..."}], "outro": "..."}`;
 	const user = JSON.stringify({
 		product: brand,

@@ -16,6 +16,9 @@ plan (English -> flow file, AI scout)
               captions.vtt, YouTube chapters, publish snippets)
 ```
 
+See [docs/pipeline.md](docs/pipeline.md) for how each stage works, what a rebuild costs, and
+which `--force` level a given change needs.
+
 ## Setup
 
 ```bash

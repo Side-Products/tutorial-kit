@@ -7,17 +7,18 @@ import { Captions } from "./Captions.jsx";
 export const Tutorial = ({ timeline }) => {
 	const { brand, intro, outro, steps, assets } = timeline;
 	const colors = brand?.colors || { bg: "#0b0b10", accent: "#8B5CF6", text: "#ffffff" };
+	// The title and end cards already carry their line as set type; captioning it too puts the
+	// same sentence on screen twice. Words that spill past a card onto the app still caption.
+	const cardEnd = intro.from + intro.durationInFrames;
 	const allWords = [
 		...(intro?.words || []),
 		...steps.flatMap((s) => s.words || []),
 		...(outro?.words || []),
-	];
+	].filter((w) => w.startFrame >= cardEnd && w.startFrame < outro.from);
 	return (
 		<AbsoluteFill
 			style={{
-				background: `radial-gradient(120% 140% at 18% 0%, ${colors.accent}26 0%, transparent 42%),
-					radial-gradient(120% 120% at 100% 100%, ${colors.accent}1f 0%, transparent 46%),
-					linear-gradient(160deg, ${colors.bg} 0%, ${shade(colors.bg, -0.35)} 100%)`,
+				background: colors.bg,
 				fontFamily: 'Inter, -apple-system, "SF Pro Display", "Segoe UI", sans-serif',
 			}}
 		>

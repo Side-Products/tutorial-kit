@@ -44,7 +44,12 @@ export function applyPronunciations(text, pronunciations) {
 
 export async function synthesizeBlock({ text, voice, previousText, nextText }) {
 	const model = voice.model || "eleven_turbo_v2_5";
-	const settings = { stability: 0.5, similarity_boost: 0.8, style: 0.2, use_speaker_boost: true, ...(voice.settings || {}) };
+	const isV3 = /^eleven_v3/.test(model);
+	const defaults = isV3
+		? { stability: 0.5 }
+		: { stability: 0.5, similarity_boost: 0.8, style: 0.2, use_speaker_boost: true };
+	const settings = { ...defaults, ...(voice.settings || {}) };
+	if (isV3) delete settings.use_speaker_boost;
 	if (voice.speed && voice.speed !== 1) settings.speed = Math.max(0.7, Math.min(1.2, voice.speed));
 	const body = { text, model_id: model, voice_settings: settings };
 	if (previousText && SUPPORTS_CONTEXT(model)) body.previous_text = previousText;

@@ -6,7 +6,8 @@
 const easeInOutCubic = (u) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
 
 export class Driver {
-	constructor({ page, baseUrl, viewport, onEvent, pacing = 1 }) {
+	constructor({ page, baseUrl, viewport, onEvent, pacing = 1, shotsDir = null }) {
+		this.shotsDir = shotsDir;
 		this.page = page;
 		this.baseUrl = baseUrl.replace(/\/$/, "");
 		this.viewport = viewport;
@@ -40,7 +41,6 @@ export class Driver {
 	// One continuous eased glide (rAF-driven inside the page). Wheel ticks read as machine input:
 	// constant velocity, discrete jumps. This animates window scroll with ease-in-out at 60fps of
 	// compositor damage, which is also what the screencast samples.
-	// ponytail: window-level scroll only; add a {within} container option when an app flow needs it.
 	async animateScroll(toY, { duration } = {}) {
 		const fromY = await this.scrollY();
 		const dist = Math.abs(toY - fromY);
@@ -66,22 +66,74 @@ export class Driver {
 		);
 	}
 
+	// Smoothly bring an element into the viewport's comfortable band by easing whichever scroll
+	// container actually owns it (window or a nested overflow ancestor). One eased animation the
+	// screencast can see, so the reveal reads as a human scrolling rather than a jump cut. Returns
+	// true if it scrolled something.
+	async animateScrollToElement(locator) {
+		const handle = await locator.elementHandle();
+		if (!handle) return false;
+		const scrolled = await this.page.evaluate(
+			async ({ el, bandCenter }) => {
+				const scrollableAncestor = (node) => {
+					for (let p = node.parentElement; p; p = p.parentElement) {
+						const s = getComputedStyle(p);
+						if (/(auto|scroll|overlay)/.test(s.overflowY) && p.scrollHeight > p.clientHeight + 2) return p;
+					}
+					return null;
+				};
+				const ease = (u) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+				const animate = (getY, setY, delta, durMs) =>
+					new Promise((done) => {
+						const startY = getY();
+						const t0 = performance.now();
+						const tick = (now) => {
+							const u = Math.min(1, (now - t0) / durMs);
+							setY(startY + delta * ease(u));
+							if (u < 1) requestAnimationFrame(tick);
+							else done();
+						};
+						requestAnimationFrame(tick);
+					});
+				const container = scrollableAncestor(el);
+				const r = el.getBoundingClientRect();
+				if (container) {
+					const cr = container.getBoundingClientRect();
+					const want = cr.top + cr.height * bandCenter; // viewport-y we want the element center at
+					const delta = r.top + r.height / 2 - want;
+					if (Math.abs(delta) < 4) return false;
+					const durMs = Math.min(2200, Math.max(650, Math.abs(delta) * 1.0 + 400));
+					await animate(() => container.scrollTop, (y) => (container.scrollTop = y), delta, durMs);
+					return true;
+				}
+				const want = window.innerHeight * bandCenter;
+				const delta = r.top + r.height / 2 - want;
+				if (Math.abs(delta) < 4) return false;
+				const durMs = Math.min(2200, Math.max(650, Math.abs(delta) * 1.0 + 400));
+				await animate(() => window.scrollY, (y) => window.scrollTo(0, y), delta, durMs);
+				return true;
+			},
+			{ el: handle, bandCenter: 0.42 }
+		);
+		await handle.dispose();
+		await this.page.waitForTimeout(140);
+		return scrolled;
+	}
+
 	// Glide until the element sits in the comfortable middle band of the viewport.
 	async scrollIntoView(locator) {
 		await locator.waitFor({ state: "visible", timeout: 15000 });
+		const inBand = (box) => {
+			const cy = box.y + box.height / 2;
+			return cy >= this.viewport.height * 0.2 && cy <= this.viewport.height * 0.8;
+		};
 		for (let i = 0; i < 3; i++) {
 			const box = await locator.boundingBox();
-			if (!box) {
-				await this.page.waitForTimeout(150);
-				continue;
-			}
-			const cy = box.y + box.height / 2;
-			const lo = this.viewport.height * 0.2;
-			const hi = this.viewport.height * 0.8;
-			if (cy >= lo && cy <= hi) return box;
-			const toY = Math.max(0, (await this.scrollY()) + cy - this.viewport.height * 0.45);
-			await this.animateScroll(toY);
-			await this.page.waitForTimeout(180);
+			if (box && inBand(box)) return box;
+			// Ease whichever container owns the element. Handles both window-scroll pages and the
+			// nested-container dashboards where window scroll is a no-op.
+			const moved = await this.animateScrollToElement(locator);
+			if (!moved) break;
 		}
 		return locator.boundingBox();
 	}
@@ -91,8 +143,8 @@ export class Driver {
 		const from = { ...this.cursor };
 		const dist = Math.hypot(tx - from.x, ty - from.y);
 		if (dist < 3) return [];
-		const durMs = Math.min(850, Math.max(420, dist * 0.55 + 300));
-		const steps = Math.max(12, Math.min(26, Math.round(durMs / 33)));
+		const durMs = Math.min(520, Math.max(300, dist * 0.4 + 200));
+		const steps = Math.max(8, Math.min(14, Math.round(durMs / 45)));
 		const mx = (from.x + tx) / 2;
 		const my = (from.y + ty) / 2;
 		const nx = -(ty - from.y) / dist;
@@ -127,53 +179,85 @@ export class Driver {
 		return /^https?:/i.test(url) ? url : this.baseUrl + (url.startsWith("/") ? url : `/${url}`);
 	}
 
-	async goto(url, { settle = 1400, media = true } = {}) {
+	async goto(url, { settle = 350, media = true } = {}) {
 		const tStart = this.now();
 		const target = this.absUrl(url);
 		await this.page.goto(target, { waitUntil: "domcontentloaded", timeout: 60000 });
 		await this.settle(settle);
-		// Log the goto BEFORE the media wait: buffering time then sits between actions, where the
-		// solver's idle compression cuts it down instead of keeping dead air 1:1 on tape.
+		// Log the goto BEFORE the stability wait: the load then sits between actions, where the
+		// solver's idle compression cuts it to a brief transition instead of keeping the skeletons
+		// and popping thumbnails on tape 1:1.
 		this.onEvent({ kind: "goto", url: target, tStart, tEnd: this.now() });
-		if (media) await this.waitMedia({ timeout: 8000 });
+		if (media) await this.waitForStable({ timeout: 8000 });
 	}
 
-	// Wait until every visible <video> is actually painting frames (resolves instantly when the
-	// viewport has none). Pure synchronization: logs nothing, so the solver compresses the wait.
-	async waitMedia({ timeout = 15000 } = {}) {
+	// Wait until the page has stopped loading in ways the camera can see: skeleton placeholders
+	// cleared and every visible image/video actually painted. Resolves fast when there is nothing
+	// pending. Logs nothing, so whatever time it takes lands in a compressed inter-action gap.
+	async waitForStable({ timeout = 8000 } = {}) {
 		await this.page
 			.waitForFunction(
 				() => {
-					const vids = [...document.querySelectorAll("video")].filter((v) => {
-						const r = v.getBoundingClientRect();
-						return r.width > 40 && r.height > 40 && r.bottom > 0 && r.top < innerHeight;
-					});
-					if (!vids.length) return true;
-					return vids.every((v) => (v.readyState >= 2 && v.currentTime > 0.05) || v.error);
+					const visible = (el) => {
+						const r = el.getBoundingClientRect();
+						return r.width > 24 && r.height > 24 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+					};
+					// Loading skeletons: aria-busy is the standard marker; the pulse class and the
+					// app's data-* hook cover the rest.
+					const skeletons = [...document.querySelectorAll('[aria-busy="true"], .animate-pulse, [data-home-skeleton], [data-skeleton]')];
+					if (skeletons.some(visible)) return false;
+					const imgs = [...document.querySelectorAll("img")].filter(visible);
+					if (imgs.some((i) => i.getAttribute("src") && !(i.complete && i.naturalWidth > 0))) return false;
+					const vids = [...document.querySelectorAll("video")].filter(visible);
+					if (vids.some((v) => !((v.readyState >= 2 && v.currentTime > 0.05) || v.error))) return false;
+					return true;
 				},
+				undefined,
 				{ timeout }
 			)
 			.catch(() => {});
 	}
 
-	async click(sel, { settleAfter = 600 } = {}) {
+	async click(sel, { settleAfter = 450 } = {}) {
 		const tStart = this.now();
 		const locator = this.loc(sel);
 		const fromY = await this.scrollY();
 		await this.scrollIntoView(locator);
-		await this.settle(300);
-		const bbox = await locator.boundingBox();
+		// Scrolling reveals lazy-loaded card previews; give them a beat to finish so shots and
+		// the recording never show blank tiles.
+		await this.waitForStable({ timeout: 5000 });
+		await this.settle(150);
+		let bbox = await locator.boundingBox();
 		if (!bbox) throw new Error(`click: target has no bbox: ${this.selStr(sel)}`);
 		const text = await this.elementText(locator);
 		const pointer = await this.movePointer(bbox.x + bbox.width / 2, bbox.y + bbox.height / 2);
-		await this.settle(160);
+		await this.settle(100);
+		// The click lands at coordinates, not on the locator: toolbars reflow while sibling panels
+		// animate open, so a center measured 250ms ago can now belong to the neighboring item.
+		// Chase the element until its position stabilizes, then click the fresh center.
+		for (let i = 0; i < 4; i++) {
+			const now = await locator.boundingBox();
+			if (!now) break;
+			const drift = Math.hypot(now.x - bbox.x, now.y - bbox.y);
+			bbox = now;
+			if (drift <= 2) break;
+			await this.movePointer(bbox.x + bbox.width / 2, bbox.y + bbox.height / 2);
+			await this.settle(120);
+		}
+		// Docs draws the click highlight on a frame; capture it now, at the exact layout the final
+		// bbox was measured against (the step's before-shot may differ in scroll and reflow).
+		let shotAtClick = null;
+		if (this.shotsDir) {
+			shotAtClick = `shots/click-${Date.now()}.png`;
+			await this.page.screenshot({ path: `${this.shotsDir}/${shotAtClick}` }).catch(() => (shotAtClick = null));
+		}
 		const tClick = this.now();
 		await this.page.mouse.down();
 		await this.page.waitForTimeout(70);
 		await this.page.mouse.up();
 		await this.settle(settleAfter);
 		this.onEvent({
-			kind: "click", selector: this.selStr(sel), elementText: text, bbox, pointer, tClick,
+			kind: "click", selector: this.selStr(sel), elementText: text, bbox, pointer, tClick, shotAtClick,
 			url: this.page.url(), scroll: { fromY, toY: await this.scrollY() }, tStart, tEnd: this.now(),
 		});
 	}
@@ -214,6 +298,8 @@ export class Driver {
 		const tStart = this.now();
 		const locator = this.loc(sel);
 		await this.scrollIntoView(locator);
+		// Scrolling reveals lazy-loaded card previews; let them finish before the camera lingers.
+		await this.waitForStable({ timeout: 5000 });
 		await this.settle(200);
 		const bbox = await locator.boundingBox();
 		if (!bbox) throw new Error(`hover: target has no bbox: ${this.selStr(sel)}`);
@@ -271,6 +357,9 @@ export class Driver {
 
 	// Deliberate hold the solver must NOT compress (let the viewer read the screen).
 	async pause(seconds = 1.5) {
+		// Let any lazy content settle FIRST, outside the pause window, so this deliberate 1:1 hold
+		// shows a fully loaded page rather than skeletons or thumbnails popping in mid-hold.
+		await this.waitForStable({ timeout: 6000 });
 		const tStart = this.now();
 		await this.page.waitForTimeout(Math.round(seconds * 1000));
 		this.onEvent({ kind: "pause", url: this.page.url(), tStart, tEnd: this.now() });

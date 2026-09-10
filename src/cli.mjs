@@ -11,7 +11,7 @@ Flow references: an exact flow id, or plain English ("record the billing tutoria
 Commands:
   list                 List flows found in the config's flows dir
   plan "<request>"     Match the request to a flow, or scout the live app and draft a new flow file
-                       (--yes records the draft immediately)
+                       (--yes records the draft immediately; --new skips matching)
   record [flow...]     Drive the app and capture frames + events (all flows if none given)
   script [flow...]     Generate editable narration script.md from the capture
   voice [flow...]      Synthesize per-block voiceover with word timestamps (ElevenLabs)
@@ -38,6 +38,7 @@ export async function main(argv) {
 			force: { type: "string" },
 			all: { type: "boolean", default: false },
 			yes: { type: "boolean", default: false },
+			new: { type: "boolean", default: false },
 			help: { type: "boolean", default: false },
 		},
 	});
@@ -57,7 +58,7 @@ export async function main(argv) {
 	if (command === "plan") {
 		const { planCommand } = await import("./plan/scout.mjs");
 		if (!ids.length) throw new Error(`plan needs a request, e.g.: tutorial-kit plan "how do I buy credits"`);
-		await planCommand(ids.join(" "), config, { yes: values.yes, headed: values.headed });
+		await planCommand(ids.join(" "), config, { yes: values.yes, headed: values.headed, forceNew: values.new });
 		return;
 	}
 	if (command === "record") {
