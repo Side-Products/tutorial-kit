@@ -32,11 +32,13 @@ const ACTION_SCHEMA = `Actions (JSON): {kind, ...}
 - {"kind":"pause","seconds":1.5}
 Prefer role+name targets taken VERBATIM from the page snapshot. Use css only as a last resort.`;
 
-export async function planCommand(phrase, config, { yes = false, headed = false } = {}) {
+export async function planCommand(phrase, config, { yes = false, headed = false, forceNew = false } = {}) {
 	const { loadFlows } = await import("../flow/loader.mjs");
 	const { resolveFlowRef } = await import("../flow/loader.mjs");
 	const flows = await loadFlows(config);
-	const existing = await resolveFlowRef(flows, phrase, config);
+	// --new: the matcher is deliberately fuzzy, so it happily claims a sibling tutorial covers a
+	// distinct feature. Skip it when you know you want a new flow.
+	const existing = forceNew ? null : await resolveFlowRef(flows, phrase, config);
 	if (existing) {
 		console.log(`matched existing flow "${existing.id}" (${existing.title})`);
 		console.log(`run: tutorial-kit build ${existing.id}`);

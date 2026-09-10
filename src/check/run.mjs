@@ -1,13 +1,16 @@
 import { launchCapture, newCaptureContext, calibrateWindow, CURSOR_HIDE_INIT } from "../capture/launch.mjs";
 import { Driver } from "../capture/driver.mjs";
 import { ensureAuth, storageStatePath } from "../capture/auth.mjs";
-import { makeRun } from "../flow/actions.mjs";
+import { makeRun, lintFlow } from "../flow/actions.mjs";
 import fs from "node:fs";
 
 // UI-drift detector: run every flow headless with NO recording. A failing step means the product
 // changed under the tutorial (or broke). Wire this into nightly CI; nonzero exit on any failure.
 export async function checkFlows(flows, config) {
 	const results = [];
+	for (const flow of flows) {
+		for (const w of lintFlow(flow)) console.warn(`warn ${w}`);
+	}
 	const browser = await launchCapture({ viewport: config.viewport, headed: false, channel: config.browserChannel });
 	try {
 		for (const flow of flows) {
