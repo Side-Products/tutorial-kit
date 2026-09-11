@@ -6,6 +6,8 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js: 22+](https://img.shields.io/badge/node.js-22%2B-339933.svg)](package.json)
 
+![A browser workflow becoming a narrated tutorial video and an annotated written guide.](docs/assets/tutorial-kit-banner.webp)
+
 Define the steps once. Tutorial Kit drives your app with Playwright, records the screen and interaction
 timings, generates editable narration, and renders a video with Remotion. The same recording produces
 annotated screenshots, captions, and a structured guide that other tools can read.
