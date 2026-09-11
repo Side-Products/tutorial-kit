@@ -1,9 +1,10 @@
 {
-	"name": "@pushpit07/tutorial-kit",
-	"version": "0.1.0",
+	"name": "tutorials-kit",
+	"version": "0.1.1",
 	"description": "Turn browser workflows into narrated tutorial videos, screenshots, and structured guides.",
 	"type": "module",
 	"bin": {
+		"tutorials-kit": "bin/tutorial-kit.js",
 		"tutorial-kit": "bin/tutorial-kit.js",
 		"tkit": "bin/tutorial-kit.js"
 	},

@@ -2,9 +2,9 @@ import { parseArgs } from "node:util";
 import { loadConfig } from "./config.mjs";
 import { loadFlows, resolveSelection } from "./flow/loader.mjs";
 
-const HELP = `tutorial-kit: automated product tutorial pipeline
+const HELP = `tutorials-kit: automated product tutorial pipeline
 
-Usage: tutorial-kit <command> [flowId...] [options]
+Usage: tutorials-kit <command> [flowId...] [options]
 
 Flow references: an exact flow id, or plain English ("record the billing tutorial").
 
@@ -57,7 +57,7 @@ export async function main(argv) {
 	}
 	if (command === "plan") {
 		const { planCommand } = await import("./plan/scout.mjs");
-		if (!ids.length) throw new Error(`plan needs a request, e.g.: tutorial-kit plan "how do I buy credits"`);
+		if (!ids.length) throw new Error(`plan needs a request, e.g.: tutorials-kit plan "how do I buy credits"`);
 		await planCommand(ids.join(" "), config, {
 			yes: values.yes,
 			headed: values.headed,

@@ -3,7 +3,7 @@
 **Turn a browser workflow into a narrated video and a written guide.**
 
 [![CI](https://github.com/Side-Products/tutorial-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/Side-Products/tutorial-kit/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/%40pushpit07%2Ftutorial-kit.svg)](https://www.npmjs.com/package/@pushpit07/tutorial-kit)
+[![npm version](https://img.shields.io/npm/v/tutorials-kit.svg)](https://www.npmjs.com/package/tutorials-kit)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js: 22+](https://img.shields.io/badge/node.js-22%2B-339933.svg)](package.json)
 
@@ -37,8 +37,8 @@ ElevenLabs. Those services require your own accounts and may incur charges.
 Use **Node.js 22 or newer**. Install the CLI in your product project:
 
 ```bash
-npm install --save-dev @pushpit07/tutorial-kit
-npx tutorial-kit --help
+npm install --save-dev tutorials-kit
+npx tutorials-kit --help
 npx playwright install chromium
 ```
 
@@ -46,12 +46,12 @@ Video composition and rendering also require **FFmpeg** with `libx264` and AAC s
 notes below. [Add a configuration and flow for your app](#use-it-with-your-app), then run:
 
 ```bash
-npx tutorial-kit check --config tutorials/tutorials.config.mjs
-npx tutorial-kit build --config tutorials/tutorials.config.mjs
+npx tutorials-kit check --config tutorials/tutorials.config.mjs
+npx tutorials-kit build --config tutorials/tutorials.config.mjs
 ```
 
-For npm installations, use `npx tutorial-kit` in place of `node bin/tutorial-kit.js` in the examples below. To
-try the included local demo, follow the source checkout walkthrough.
+For npm installations, use `npx tutorials-kit` in place of `node bin/tutorial-kit.js` in the examples below.
+To try the included local demo, follow the source checkout walkthrough.
 
 ## Quick start
 

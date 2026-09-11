@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 (2026-09-11)
+
+- Publish as the unscoped npm package `tutorials-kit`.
+- Add the `tutorials-kit` CLI command alongside the existing `tutorial-kit` and `tkit` aliases.
+- Update installation instructions and the npm badge to use the new package name.
+
 ## 0.1.0 (2026-09-11)
 
 First public npm release, available as `@pushpit07/tutorial-kit` with the `tutorial-kit` and `tkit` CLI
