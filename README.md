@@ -3,7 +3,7 @@
 **Turn a browser workflow into a narrated video and a written guide.**
 
 [![CI](https://github.com/Side-Products/tutorial-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/Side-Products/tutorial-kit/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/tutorial-kit.svg)](https://www.npmjs.com/package/tutorial-kit)
+[![npm version](https://img.shields.io/npm/v/%40pushpit07%2Ftutorial-kit.svg)](https://www.npmjs.com/package/@pushpit07/tutorial-kit)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js: 22+](https://img.shields.io/badge/node.js-22%2B-339933.svg)](package.json)
 
@@ -37,7 +37,7 @@ ElevenLabs. Those services require your own accounts and may incur charges.
 Use **Node.js 22 or newer**. Install the CLI in your product project:
 
 ```bash
-npm install --save-dev tutorial-kit
+npm install --save-dev @pushpit07/tutorial-kit
 npx tutorial-kit --help
 npx playwright install chromium
 ```
