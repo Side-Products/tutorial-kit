@@ -1,5 +1,14 @@
 import React from "react";
-import { AbsoluteFill, Sequence, OffthreadVideo, Freeze, staticFile, useCurrentFrame, interpolate, Easing } from "remotion";
+import {
+	AbsoluteFill,
+	Sequence,
+	OffthreadVideo,
+	Freeze,
+	staticFile,
+	useCurrentFrame,
+	interpolate,
+	Easing,
+} from "remotion";
 import { CursorLayer } from "./Cursor.jsx";
 import { shade } from "./Tutorial.jsx";
 
@@ -12,9 +21,24 @@ function zoomTransform(zoom, frame, vw, vh) {
 	if (!zoom || zoom.length < 2) return { scale: 1, tx: 0, ty: 0 };
 	const kfs = zoom.filter((k, i, arr) => i === 0 || k.frame > arr[i - 1].frame);
 	const frames = kfs.map((k) => k.frame);
-	const s = interpolate(frame, frames, kfs.map((k) => k.scale), { easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-	let fx = interpolate(frame, frames, kfs.map((k) => k.x), { easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-	let fy = interpolate(frame, frames, kfs.map((k) => k.y), { easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+	const s = interpolate(
+		frame,
+		frames,
+		kfs.map((k) => k.scale),
+		{ easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+	);
+	let fx = interpolate(
+		frame,
+		frames,
+		kfs.map((k) => k.x),
+		{ easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+	);
+	let fy = interpolate(
+		frame,
+		frames,
+		kfs.map((k) => k.y),
+		{ easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+	);
 	fx = Math.max(vw / 2 / s, Math.min(vw - vw / 2 / s, fx));
 	fy = Math.max(vh / 2 / s, Math.min(vh - vh / 2 / s, fy));
 	// Halve the movement away from the unzoomed view, including the pan. Apply this
@@ -67,7 +91,16 @@ export const StepScene = ({ timeline, step, index }) => {
 					}}
 				>
 					{["#FF5F57", "#FEBC2E", "#28C840"].map((c) => (
-						<div key={c} style={{ width: 12 * stageScale, height: 12 * stageScale, borderRadius: "50%", background: c, opacity: 0.9 }} />
+						<div
+							key={c}
+							style={{
+								width: 12 * stageScale,
+								height: 12 * stageScale,
+								borderRadius: "50%",
+								background: c,
+								opacity: 0.9,
+							}}
+						/>
 					))}
 					<div
 						style={{
@@ -90,8 +123,17 @@ export const StepScene = ({ timeline, step, index }) => {
 					<div style={{ width: 44 * stageScale }} />
 				</div>
 				{/* Screen viewport in CSS-px coordinate space, scaled up to the stage */}
-				<div style={{ width: vw, height: vh, transform: `scale(${stageScale})`, transformOrigin: "top left" }}>
-					<div style={{ width: vw, height: vh, transform: `translate(${tx}px, ${ty}px) scale(${scale})`, transformOrigin: "center" }}>
+				<div
+					style={{ width: vw, height: vh, transform: `scale(${stageScale})`, transformOrigin: "top left" }}
+				>
+					<div
+						style={{
+							width: vw,
+							height: vh,
+							transform: `translate(${tx}px, ${ty}px) scale(${scale})`,
+							transformOrigin: "center",
+						}}
+					>
 						<Sequence from={0} durationInFrames={Math.max(1, step.video.srcDuration)} layout="none">
 							<OffthreadVideo
 								src={staticFile(timeline.assets.mezzanine)}
@@ -102,9 +144,17 @@ export const StepScene = ({ timeline, step, index }) => {
 							/>
 						</Sequence>
 						{step.video.freezeFrames > 0 ? (
-							<Sequence from={Math.max(1, step.video.srcDuration)} durationInFrames={step.video.freezeFrames} layout="none">
+							<Sequence
+								from={Math.max(1, step.video.srcDuration)}
+								durationInFrames={step.video.freezeFrames}
+								layout="none"
+							>
 								<Freeze frame={step.video.srcFrom + Math.max(1, step.video.srcDuration) - 1}>
-									<OffthreadVideo src={staticFile(timeline.assets.mezzanine)} muted style={{ width: vw, height: vh, display: "block" }} />
+									<OffthreadVideo
+										src={staticFile(timeline.assets.mezzanine)}
+										muted
+										style={{ width: vw, height: vh, display: "block" }}
+									/>
 								</Freeze>
 							</Sequence>
 						) : null}
@@ -112,15 +162,29 @@ export const StepScene = ({ timeline, step, index }) => {
 					</div>
 				</div>
 			</div>
-			<StepChip index={index} total={timeline.steps.length} title={step.title} colors={colors} stageW={stageW} top={Math.max(18, cardTop - 96)} />
+			<StepChip
+				index={index}
+				total={timeline.steps.length}
+				title={step.title}
+				colors={colors}
+				stageW={stageW}
+				top={Math.max(18, cardTop - 96)}
+			/>
 		</AbsoluteFill>
 	);
 };
 
 const StepChip = ({ index, total, title, colors, stageW, top }) => {
 	const frame = useCurrentFrame();
-	const rise = interpolate(frame, [4, 20], [26, 0], { easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-	const opacity = interpolate(frame, [4, 18, 110, 126], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+	const rise = interpolate(frame, [4, 20], [26, 0], {
+		easing: EASE,
+		extrapolateLeft: "clamp",
+		extrapolateRight: "clamp",
+	});
+	const opacity = interpolate(frame, [4, 18, 110, 126], [0, 1, 1, 0], {
+		extrapolateLeft: "clamp",
+		extrapolateRight: "clamp",
+	});
 	return (
 		<div
 			style={{
@@ -146,7 +210,9 @@ const StepChip = ({ index, total, title, colors, stageW, top }) => {
 					fontWeight: 600,
 				}}
 			>
-				<span style={{ color: colors.accent || "#8B5CF6", fontWeight: 700 }}>{index + 1}/{total}</span>
+				<span style={{ color: colors.accent || "#8B5CF6", fontWeight: 700 }}>
+					{index + 1}/{total}
+				</span>
 				<span>{title}</span>
 			</div>
 		</div>

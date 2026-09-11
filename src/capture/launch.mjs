@@ -15,12 +15,14 @@ export async function launchCapture({ viewport, headed = false, channel = "chrom
 	// page (hero mocks, preview reels) renders as a black box in the capture.
 	if (channel) {
 		try {
-			return await chromium.launch({ headless: !headed, channel, args });
+			return await chromium.launch({ headless: !headed, channel, args, chromiumSandbox: true });
 		} catch (e) {
-			console.warn(`chrome channel launch failed (${e.message.split("\n")[0]}); using bundled Chromium: page MP4s may render black`);
+			console.warn(
+				`chrome channel launch failed (${e.message.split("\n")[0]}); using bundled Chromium: page MP4s may render black`,
+			);
 		}
 	}
-	return chromium.launch({ headless: !headed, args });
+	return chromium.launch({ headless: !headed, args, chromiumSandbox: true });
 }
 
 export async function newCaptureContext(browser, { storageState } = {}) {
@@ -55,7 +57,9 @@ export async function calibrateWindow(page, viewport) {
 	}
 	const finalSize = await page.evaluate(() => ({ w: innerWidth, h: innerHeight }));
 	if (finalSize.w !== viewport.width || finalSize.h !== viewport.height) {
-		console.warn(`viewport calibration ended at ${finalSize.w}x${finalSize.h} (wanted ${viewport.width}x${viewport.height})`);
+		console.warn(
+			`viewport calibration ended at ${finalSize.w}x${finalSize.h} (wanted ${viewport.width}x${viewport.height})`,
+		);
 	}
 }
 

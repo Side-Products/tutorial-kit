@@ -3,11 +3,14 @@ import path from "node:path";
 import { launchCapture, newCaptureContext, calibrateWindow, CURSOR_HIDE_INIT } from "./launch.mjs";
 import { Screencast } from "./screencast.mjs";
 import { Driver } from "./driver.mjs";
-import { ensureAuth, storageStatePath } from "./auth.mjs";
+import { ensureAuth, authStateForFlow } from "./auth.mjs";
 import { flowOutDir } from "../config.mjs";
 import { makeRun, locatorFor } from "../flow/actions.mjs";
+import { validateFlow } from "../flow/validate.mjs";
+import { publicUrl } from "../security/urls.mjs";
 
 export async function recordFlow(flow, config, { headed = false } = {}) {
+	validateFlow(flow, { baseUrl: config.baseUrl });
 	let healCtx = null;
 	if (flow.declarative) {
 		const { buildSelfHeal } = await import("../plan/scout.mjs");
@@ -22,25 +25,24 @@ export async function recordFlow(flow, config, { headed = false } = {}) {
 	fs.mkdirSync(shotsDir, { recursive: true });
 
 	const browser = await launchCapture({ viewport: config.viewport, headed, channel: config.browserChannel });
-	const statePath = storageStatePath(config);
-	const context = await newCaptureContext(browser, {
-		storageState: config.auth && fs.existsSync(statePath) ? statePath : undefined,
-	});
-	await context.addInitScript(CURSOR_HIDE_INIT);
-	const page = await context.newPage();
+	try {
+		const context = await newCaptureContext(browser, {
+			storageState: authStateForFlow(config, flow),
+		});
+		await context.addInitScript(CURSOR_HIDE_INIT);
+		const page = await context.newPage();
 		await calibrateWindow(page, config.viewport);
 
-	const steps = [];
-	let current = null;
-	const driver = new Driver({
-		page,
-		baseUrl: config.baseUrl,
-		viewport: config.viewport,
-		onEvent: (a) => current?.actions.push(a),
-		shotsDir: capDir,
-	});
+		const steps = [];
+		let current = null;
+		const driver = new Driver({
+			page,
+			baseUrl: config.baseUrl,
+			viewport: config.viewport,
+			onEvent: (a) => current?.actions.push(a),
+			shotsDir: capDir,
+		});
 
-	try {
 		if (config.auth && flow.auth !== false) {
 			const res = await ensureAuth(context, page, config);
 			console.log(`auth: ${res.via || "none"}`);
@@ -66,7 +68,7 @@ export async function recordFlow(flow, config, { headed = false } = {}) {
 				index: i,
 				title: step.title || prettify(stepId),
 				sayHint: step.say || "",
-				urlBefore: page.url(),
+				urlBefore: publicUrl(page.url()),
 				tStart: Date.now() / 1000,
 				actions: [],
 			};
@@ -74,12 +76,14 @@ export async function recordFlow(flow, config, { headed = false } = {}) {
 			await (step.run || makeRun(step, healCtx))(driver);
 			current = null;
 			rec.tEnd = Date.now() / 1000;
-			rec.urlAfter = page.url();
+			rec.urlAfter = publicUrl(page.url());
 			// Guardrail: re-measure the first clicked/filled element now that the step settled.
 			// Docs draws the highlight on the after-shot; a bbox captured at click time goes stale
 			// when the page scrolls or re-renders (chat feeds, async grids). null = no box drawn,
 			// which beats a box floating over blank space.
-			const firstDecl = (step.actions || []).find((a) => (a.kind === "click" || a.kind === "fill") && a.target);
+			const firstDecl = (step.actions || []).find(
+				(a) => (a.kind === "click" || a.kind === "fill") && a.target,
+			);
 			if (firstDecl) {
 				try {
 					const loc = locatorFor(driver, firstDecl.target);
@@ -102,10 +106,13 @@ export async function recordFlow(flow, config, { headed = false } = {}) {
 				if (rec.bboxAfter) {
 					try {
 						const loc = locatorFor(driver, firstDecl.target);
-						rec.dialogAfter = await loc.evaluate((el, c) => {
-							const top = document.elementFromPoint(c.x, c.y);
-							return !(top && (el === top || el.contains(top) || top.contains(el)));
-						}, { x: rec.bboxAfter.x + rec.bboxAfter.width / 2, y: rec.bboxAfter.y + rec.bboxAfter.height / 2 });
+						rec.dialogAfter = await loc.evaluate(
+							(el, c) => {
+								const top = document.elementFromPoint(c.x, c.y);
+								return !(top && (el === top || el.contains(top) || top.contains(el)));
+							},
+							{ x: rec.bboxAfter.x + rec.bboxAfter.width / 2, y: rec.bboxAfter.y + rec.bboxAfter.height / 2 },
+						);
 					} catch {
 						rec.dialogAfter = false;
 					}
@@ -133,7 +140,7 @@ export async function recordFlow(flow, config, { headed = false } = {}) {
 				flowId: flow.id,
 				title: flow.title,
 				goal: flow.goal || "",
-				baseUrl: config.baseUrl,
+				baseUrl: publicUrl(config.baseUrl),
 				canonicalHost: config.canonicalHost,
 				viewport: config.viewport,
 				recordedAt: new Date().toISOString(),
@@ -147,13 +154,13 @@ export async function recordFlow(flow, config, { headed = false } = {}) {
 		fs.writeFileSync(path.join(capDir, "events.json"), JSON.stringify(events, null, 1));
 		fs.writeFileSync(
 			path.join(capDir, "frames.json"),
-			JSON.stringify({ dir: "frames", viewport: config.viewport, frames })
+			JSON.stringify({ dir: "frames", viewport: config.viewport, frames }),
 		);
 
 		const bytes = frames.reduce((s, f) => s + fs.statSync(path.join(framesDir, f.file)).size, 0);
 		const dur = frames.length ? frames[frames.length - 1].t - frames[0].t : 0;
 		console.log(
-			`recorded ${flow.id}: ${steps.length} steps, ${frames.length} frames over ${dur.toFixed(1)}s, ${(bytes / 1e6).toFixed(0)}MB`
+			`recorded ${flow.id}: ${steps.length} steps, ${frames.length} frames over ${dur.toFixed(1)}s, ${(bytes / 1e6).toFixed(0)}MB`,
 		);
 		return { outDir, events, frames };
 	} finally {

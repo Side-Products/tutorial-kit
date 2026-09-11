@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import sharp from "sharp";
-import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
+import { FFMPEG_PATH, concatFileLine } from "../src/media/encode.mjs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
@@ -159,39 +159,65 @@ async function main() {
 	const bytes = frames.reduce((s, f) => s + fs.statSync(f.file).size, 0);
 
 	console.log("=== M0 CAPTURE STATS ===");
-	console.log(`frames: ${frames.length} over ${total.toFixed(1)}s (avg ${(frames.length / total).toFixed(1)} fps)`);
+	console.log(
+		`frames: ${frames.length} over ${total.toFixed(1)}s (avg ${(frames.length / total).toFixed(1)} fps)`,
+	);
 	console.log(`frame size: ${first.width}x${first.height} (want 3840x2160)`);
 	console.log(`max fps (1s bucket): ${maxFps}`);
 	console.log(`scroll-segment fps: ${scrollFps.toFixed(1)} (gate: >= 15)`);
 	console.log(`click-to-frame visual latency: ${alignMs === null ? "n/a (no click)" : alignMs + "ms"}`);
-	console.log(`disk: ${(bytes / 1e6).toFixed(0)}MB (${(bytes / frames.length / 1024).toFixed(0)}KB/frame avg)`);
+	console.log(
+		`disk: ${(bytes / 1e6).toFixed(0)}MB (${(bytes / frames.length / 1024).toFixed(0)}KB/frame avg)`,
+	);
 
 	// --- Mezzanine assembly ---
 	const concat = ["ffconcat version 1.0"];
 	for (let i = 0; i < frames.length; i++) {
 		const d = i < frames.length - 1 ? Math.max(frames[i + 1].t - frames[i].t, 1 / 120) : 1 / 30;
-		concat.push(`file '${frames[i].file}'`);
+		concat.push(concatFileLine(frames[i].file));
 		concat.push(`duration ${d.toFixed(6)}`);
 	}
-	concat.push(`file '${frames[frames.length - 1].file}'`); // concat demuxer quirk
+	concat.push(concatFileLine(frames[frames.length - 1].file)); // concat demuxer quirk
 	const concatPath = path.join(OUT, "frames.ffconcat");
 	fs.writeFileSync(concatPath, concat.join("\n"));
 
 	const mezz = path.join(OUT, "mezzanine.mp4");
 	const t0 = Date.now();
 	await execFileP(
-		ffmpegInstaller.path,
-		["-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", concatPath,
-			"-vf", "fps=30,format=yuv420p", "-c:v", "libx264", "-preset", "faster", "-crf", "12",
-			"-x264-params", "keyint=30", mezz],
-		{ timeout: 600000, maxBuffer: 1024 * 1024 * 64 }
+		FFMPEG_PATH,
+		[
+			"-hide_banner",
+			"-loglevel",
+			"error",
+			"-y",
+			"-f",
+			"concat",
+			"-safe",
+			"0",
+			"-i",
+			concatPath,
+			"-vf",
+			"fps=30,format=yuv420p",
+			"-c:v",
+			"libx264",
+			"-preset",
+			"faster",
+			"-crf",
+			"12",
+			"-x264-params",
+			"keyint=30",
+			mezz,
+		],
+		{ timeout: 600000, maxBuffer: 1024 * 1024 * 64 },
 	);
 	const mezzMB = (fs.statSync(mezz).size / 1e6).toFixed(0);
 	console.log(`mezzanine: ${mezz} (${mezzMB}MB, encoded in ${((Date.now() - t0) / 1000).toFixed(0)}s)`);
 
 	// --- Crispness inspection crops (1:1 pixels of a text-heavy region) ---
 	const mid = frames[Math.floor(frames.length * 0.15)]; // early frame: hero text
-	await sharp(mid.file).extract({ left: 640, top: 400, width: 1200, height: 675 }).png()
+	await sharp(mid.file)
+		.extract({ left: 640, top: 400, width: 1200, height: 675 })
+		.png()
 		.toFile(path.join(OUT, "crop-text-1to1.png"));
 	await sharp(mid.file).resize(1200).png().toFile(path.join(OUT, "overview.png"));
 	console.log(`inspect: ${path.join(OUT, "crop-text-1to1.png")} and overview.png`);
