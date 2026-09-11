@@ -8,13 +8,26 @@ export const CursorLayer = ({ cursor, accent }) => {
 	if (!cursor || !cursor.path || cursor.path.length === 0) return null;
 	const pts = cursor.path.filter((p, i, arr) => i === 0 || p.frame > arr[i - 1].frame);
 	const frames = pts.map((p) => p.frame);
-	const x = interpolate(frame, frames, pts.map((p) => p.x), { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-	const y = interpolate(frame, frames, pts.map((p) => p.y), { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+	const x = interpolate(
+		frame,
+		frames,
+		pts.map((p) => p.x),
+		{ extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+	);
+	const y = interpolate(
+		frame,
+		frames,
+		pts.map((p) => p.y),
+		{ extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+	);
 
 	let press = 0;
 	for (const c of cursor.clicks || []) {
 		if (frame >= c.frame - 3 && frame <= c.frame + 6) {
-			press = interpolate(frame, [c.frame - 3, c.frame, c.frame + 6], [0, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+			press = interpolate(frame, [c.frame - 3, c.frame, c.frame + 6], [0, 1, 0], {
+				extrapolateLeft: "clamp",
+				extrapolateRight: "clamp",
+			});
 		}
 	}
 

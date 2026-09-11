@@ -1,7 +1,7 @@
 {
 	"name": "tutorial-kit",
 	"version": "0.1.0",
-	"description": "Automated product tutorial pipeline: drive a web app with Playwright, capture crisp footage and ground-truth events, narrate with AI, compose and render with Remotion. Emits videos plus agent-executable guides.",
+	"description": "Turn browser workflows into narrated tutorial videos, screenshots, and structured guides.",
 	"type": "module",
 	"bin": {
 		"tutorial-kit": "bin/tutorial-kit.js",
@@ -10,23 +10,51 @@
 	"files": [
 		"bin",
 		"src",
-		"assets",
 		"templates",
-		"README.md"
+		"README.md",
+		"LICENSE",
+		"SECURITY.md",
+		"THIRD_PARTY_NOTICES.md",
+		"docs"
 	],
 	"engines": {
-		"node": ">=20"
+		"node": ">=22"
 	},
 	"license": "MIT",
 	"dependencies": {
-		"@ffmpeg-installer/ffmpeg": "^1.1.0",
-		"@remotion/bundler": "4.0.509",
-		"@remotion/cli": "4.0.509",
-		"@remotion/renderer": "4.0.509",
-		"playwright": "1.49.1",
+		"@remotion/bundler": "4.0.523",
+		"@remotion/renderer": "4.0.523",
+		"playwright": "1.63.0",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
-		"remotion": "4.0.509",
-		"sharp": "^0.33.5"
+		"remotion": "4.0.523",
+		"sharp": "^0.35.4"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Side-Products/tutorial-kit.git"
+	},
+	"homepage": "https://github.com/Side-Products/tutorial-kit#readme",
+	"bugs": {
+		"url": "https://github.com/Side-Products/tutorial-kit/issues"
+	},
+	"keywords": [
+		"tutorial",
+		"playwright",
+		"remotion",
+		"screen-recording",
+		"documentation",
+		"video"
+	],
+	"scripts": {
+		"test": "node --test test/*.test.mjs",
+		"test:integration": "node --test test/integration/*.test.mjs",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"check": "npm run format:check && npm test",
+		"demo": "node examples/basic/server.mjs"
+	},
+	"devDependencies": {
+		"prettier": "3.9.6"
 	}
 }

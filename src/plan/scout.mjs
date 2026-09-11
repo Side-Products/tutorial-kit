@@ -1,9 +1,11 @@
 import fs from "node:fs";
-import path from "node:path";
 import { chat, scriptModel } from "../llm/client.mjs";
 import { codegenFlow } from "../flow/actions.mjs";
 import { launchCapture, newCaptureContext, calibrateWindow } from "../capture/launch.mjs";
-import { ensureAuth, storageStatePath } from "../capture/auth.mjs";
+import { ensureAuth, authStateForFlow } from "../capture/auth.mjs";
+import { validateFlow, selectorRepair } from "../flow/validate.mjs";
+import { pathInside } from "../security/paths.mjs";
+import { sameOriginUrl, publicUrl } from "../security/urls.mjs";
 
 // Scout mode: turn a plain-English request into a draft flow file by looking at the live app.
 export async function snapshotPage(page, maxChars = 9000) {
@@ -13,11 +15,16 @@ export async function snapshotPage(page, maxChars = 9000) {
 	} catch {}
 	// Fallback: enumerate interactive elements by hand.
 	const items = await page.$$eval("a, button, input, select, textarea, [role=button], [role=tab]", (els) =>
-		els.slice(0, 220).map((el) => {
-			const role = el.getAttribute("role") || el.tagName.toLowerCase();
-			const name = (el.innerText || el.getAttribute("aria-label") || el.getAttribute("placeholder") || "").trim().slice(0, 60);
-			return name ? `${role}: "${name}"` : null;
-		}).filter(Boolean)
+		els
+			.slice(0, 220)
+			.map((el) => {
+				const role = el.getAttribute("role") || el.tagName.toLowerCase();
+				const name = (el.innerText || el.getAttribute("aria-label") || el.getAttribute("placeholder") || "")
+					.trim()
+					.slice(0, 60);
+				return name ? `${role}: "${name}"` : null;
+			})
+			.filter(Boolean),
 	);
 	return items.join("\n").slice(0, maxChars);
 }
@@ -45,7 +52,9 @@ export async function planCommand(phrase, config, { yes = false, headed = false,
 		return existing;
 	}
 	if (!config.sitemap?.length) {
-		throw new Error("no matching flow, and config.sitemap is empty: add [{path, purpose}] entries so the scout knows where to look");
+		throw new Error(
+			"no matching flow, and config.sitemap is empty: add [{path, purpose}] entries so the scout knows where to look",
+		);
 	}
 	const model = scriptModel(config);
 	console.log(`scouting for: "${phrase}"`);
@@ -55,22 +64,22 @@ export async function planCommand(phrase, config, { yes = false, headed = false,
 		model,
 		json: true,
 	});
-	const routes = (routePick.routes || []).slice(0, 3);
+	const routes = selectScoutRoutes(routePick.routes, config);
 	if (!routes.length) throw new Error("scout could not pick candidate routes");
 	console.log(`visiting: ${routes.join(", ")}`);
 
 	const browser = await launchCapture({ viewport: config.viewport, headed, channel: config.browserChannel });
 	const pages = [];
 	try {
-		const statePath = storageStatePath(config);
 		const context = await newCaptureContext(browser, {
-			storageState: config.auth && fs.existsSync(statePath) ? statePath : undefined,
+			storageState: authStateForFlow(config),
 		});
 		const page = await context.newPage();
 		await calibrateWindow(page, config.viewport);
 		if (config.auth) await ensureAuth(context, page, config);
 		for (const r of routes) {
-			await page.goto(config.baseUrl + r, { waitUntil: "domcontentloaded", timeout: 60000 }).catch(() => {});
+			await page.goto(sameOriginUrl(r, config.baseUrl), { waitUntil: "domcontentloaded", timeout: 60000 });
+			sameOriginUrl(page.url(), config.baseUrl);
 			await page.waitForTimeout(2200);
 			pages.push({ route: r, snapshot: await snapshotPage(page) });
 		}
@@ -89,17 +98,16 @@ Return JSON {"id","title","goal","steps":[{"id","say","actions":[...]}]}.`,
 		model,
 		json: true,
 	});
-	if (!spec?.id || !Array.isArray(spec.steps) || !spec.steps.length) throw new Error("scout drafted an invalid flow spec");
 	spec.auth = !!config.auth;
-	const file = path.join(config.flowsDirAbs, `${spec.id.replace(/[^a-z0-9-]/gi, "-")}.tutorial.mjs`);
-	fs.mkdirSync(config.flowsDirAbs, { recursive: true });
-	fs.writeFileSync(file, codegenFlow(spec));
+	if (flows.some((flow) => flow.id === spec.id))
+		throw new Error("scout chose an existing flow id; choose a new request or edit the existing flow");
+	const file = writeDraft(spec, config);
 	console.log(`drafted ${file}:\n`);
 	console.log(fs.readFileSync(file, "utf8"));
 	if (yes) {
 		const fresh = (await loadFlows(config)).find((f) => f.id === spec.id);
 		const { recordFlow } = await import("../capture/record.mjs");
-		await recordFlow(fresh, config, {});
+		await recordFlow(fresh, config, { headed });
 		console.log(`recorded. Next: tutorial-kit build ${spec.id}`);
 	} else {
 		console.log(`review/edit the file, then: tutorial-kit build ${spec.id}`);
@@ -110,25 +118,34 @@ Return JSON {"id","title","goal","steps":[{"id","say","actions":[...]}]}.`,
 // Self-heal for declarative flows: one LLM repair attempt per failing action, then the flow file is
 // rewritten so the fix sticks.
 export function buildSelfHeal(flow, config) {
-	if (!process.env.OPENAI_API_KEY) return null;
+	if (config.selfHeal !== true || !process.env.OPENAI_API_KEY || flow.steps.some((step) => step.run))
+		return null;
 	return {
-		selfHeal: async ({ t, action, error }) => {
+		selfHeal: async ({ t, action }) => {
+			if (action.redact || action.noHeal || !["click", "fill", "hover", "waitFor"].includes(action.kind))
+				return null;
 			try {
-				console.log(`self-heal: ${action.kind} failed (${error.message.split("\n")[0]}), asking for a repair...`);
+				console.log(`self-heal: ${action.kind} failed, asking for a selector repair...`);
 				const snapshot = await snapshotPage(t.page);
 				const out = await chat({
 					system: `A tutorial automation action failed. Propose a replacement action targeting an element that IS in the snapshot.\n${ACTION_SCHEMA}\nReturn JSON {"action": {...}} or {"action": null} if impossible.`,
-					user: JSON.stringify({ failed: action, error: error.message.split("\n")[0], url: t.page.url(), snapshot }),
+					user: JSON.stringify({
+						failed: { kind: action.kind, target: action.target },
+						url: publicUrl(t.page.url()),
+						snapshot,
+					}),
 					model: scriptModel(config),
 					json: true,
 				});
-				return out.action || null;
+				return selectorRepair(action, out.action);
 			} catch {
 				return null;
 			}
 		},
 		onHealed: (step, i, healed) => {
-			console.log(`self-heal: step ${step.id} action ${i} repaired -> ${JSON.stringify(healed.target || healed)}`);
+			console.log(
+				`self-heal: step ${step.id} action ${i} repaired -> ${JSON.stringify(healed.target || healed)}`,
+			);
 			try {
 				fs.writeFileSync(flow.file, codegenFlow(flow));
 				console.log(`self-heal: rewrote ${flow.file}`);
@@ -137,4 +154,23 @@ export function buildSelfHeal(flow, config) {
 			}
 		},
 	};
+}
+
+export function selectScoutRoutes(proposed, config) {
+	if (!Array.isArray(proposed)) throw new Error("scout routes must be an array");
+	const allowed = new Set(config.sitemap.map((route) => route.path));
+	const routes = [...new Set(proposed)].slice(0, 3);
+	for (const route of routes) {
+		if (!allowed.has(route)) throw new Error("scout selected a route outside config.sitemap");
+		sameOriginUrl(route, config.baseUrl);
+	}
+	return routes;
+}
+
+export function writeDraft(spec, config) {
+	validateFlow(spec, { baseUrl: config.baseUrl, declarativeOnly: true });
+	const file = pathInside(config.flowsDirAbs, `${spec.id}.tutorial.mjs`);
+	fs.mkdirSync(config.flowsDirAbs, { recursive: true });
+	fs.writeFileSync(file, codegenFlow(spec), { flag: "wx" });
+	return file;
 }

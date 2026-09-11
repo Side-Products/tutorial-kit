@@ -58,7 +58,11 @@ export async function main(argv) {
 	if (command === "plan") {
 		const { planCommand } = await import("./plan/scout.mjs");
 		if (!ids.length) throw new Error(`plan needs a request, e.g.: tutorial-kit plan "how do I buy credits"`);
-		await planCommand(ids.join(" "), config, { yes: values.yes, headed: values.headed, forceNew: values.new });
+		await planCommand(ids.join(" "), config, {
+			yes: values.yes,
+			headed: values.headed,
+			forceNew: values.new,
+		});
 		return;
 	}
 	if (command === "record") {
@@ -119,7 +123,9 @@ export async function main(argv) {
 		const path = await import("node:path");
 		const { flowOutDir } = await import("./config.mjs");
 		for (const flow of await resolveSelection(flows, ids, config)) {
-			const target = values.all ? flowOutDir(config, flow.id) : path.join(flowOutDir(config, flow.id), "capture", "frames");
+			const target = values.all
+				? flowOutDir(config, flow.id)
+				: path.join(flowOutDir(config, flow.id), "capture", "frames");
 			fs.rmSync(target, { recursive: true, force: true });
 			console.log(`cleaned ${target}`);
 		}

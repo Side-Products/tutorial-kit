@@ -1,27 +1,37 @@
 import { launchCapture, newCaptureContext, calibrateWindow, CURSOR_HIDE_INIT } from "../capture/launch.mjs";
 import { Driver } from "../capture/driver.mjs";
-import { ensureAuth, storageStatePath } from "../capture/auth.mjs";
+import { ensureAuth, authStateForFlow } from "../capture/auth.mjs";
 import { makeRun, lintFlow } from "../flow/actions.mjs";
-import fs from "node:fs";
+import { validateFlow } from "../flow/validate.mjs";
 
 // UI-drift detector: run every flow headless with NO recording. A failing step means the product
 // changed under the tutorial (or broke). Wire this into nightly CI; nonzero exit on any failure.
 export async function checkFlows(flows, config) {
 	const results = [];
 	for (const flow of flows) {
+		validateFlow(flow, { baseUrl: config.baseUrl });
 		for (const w of lintFlow(flow)) console.warn(`warn ${w}`);
 	}
-	const browser = await launchCapture({ viewport: config.viewport, headed: false, channel: config.browserChannel });
+	const browser = await launchCapture({
+		viewport: config.viewport,
+		headed: false,
+		channel: config.browserChannel,
+	});
 	try {
 		for (const flow of flows) {
-			const statePath = storageStatePath(config);
 			const context = await newCaptureContext(browser, {
-				storageState: config.auth && fs.existsSync(statePath) ? statePath : undefined,
+				storageState: authStateForFlow(config, flow),
 			});
 			await context.addInitScript(CURSOR_HIDE_INIT);
 			const page = await context.newPage();
-		await calibrateWindow(page, config.viewport);
-			const driver = new Driver({ page, baseUrl: config.baseUrl, viewport: config.viewport, onEvent: () => {}, pacing: 0.35 });
+			await calibrateWindow(page, config.viewport);
+			const driver = new Driver({
+				page,
+				baseUrl: config.baseUrl,
+				viewport: config.viewport,
+				onEvent: () => {},
+				pacing: 0.35,
+			});
 			const t0 = Date.now();
 			let failure = null;
 			try {
@@ -42,7 +52,9 @@ export async function checkFlows(flows, config) {
 			}
 			const secs = ((Date.now() - t0) / 1000).toFixed(1);
 			results.push({ flow: flow.id, ok: !failure, secs, failure });
-			console.log(failure ? `FAIL ${flow.id} at ${failure.step}: ${failure.error}` : `ok   ${flow.id} (${secs}s)`);
+			console.log(
+				failure ? `FAIL ${flow.id} at ${failure.step}: ${failure.error}` : `ok   ${flow.id} (${secs}s)`,
+			);
 			await context.close().catch(() => {});
 		}
 	} finally {

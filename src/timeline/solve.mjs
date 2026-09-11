@@ -1,6 +1,8 @@
 // The timeline solver: all math lives here, the Remotion comp stays dumb.
 // Capture time (epoch seconds) -> mezzanine time (retimed) -> composition frames.
 
+import { publicUrl } from "../security/urls.mjs";
+
 const FPS = 30;
 const IDLE_MAX = 0.9; // gaps longer than this get compressed...
 const IDLE_OUT = 0.45; // ...to this (gentler than a hard jump cut)
@@ -86,7 +88,9 @@ export function frameOutDurations(frames, map) {
 // One zoom cluster per step: consecutive click/fill bboxes within reach of each other,
 // preferring the last (usually the decisive) cluster. Skips huge targets.
 function planZoom(step, map, stepSrcStart, stepFrames, viewport) {
-	const pts = step.actions.filter((a) => (a.kind === "click" || a.kind === "fill" || a.kind === "select") && a.bbox);
+	const pts = step.actions.filter(
+		(a) => (a.kind === "click" || a.kind === "fill" || a.kind === "select") && a.bbox,
+	);
 	if (!pts.length) return { zoom: [], cluster: null };
 	const clusters = [];
 	let cluster = null;
@@ -104,9 +108,12 @@ function planZoom(step, map, stepSrcStart, stepFrames, viewport) {
 		} else {
 			cluster = {
 				actions: [a],
-				minX: a.bbox.x, minY: a.bbox.y,
-				maxX: a.bbox.x + a.bbox.width, maxY: a.bbox.y + a.bbox.height,
-				cx: a.bbox.x + a.bbox.width / 2, cy: a.bbox.y + a.bbox.height / 2,
+				minX: a.bbox.x,
+				minY: a.bbox.y,
+				maxX: a.bbox.x + a.bbox.width,
+				maxY: a.bbox.y + a.bbox.height,
+				cx: a.bbox.x + a.bbox.width / 2,
+				cy: a.bbox.y + a.bbox.height / 2,
 			};
 			clusters.push(cluster);
 		}
@@ -152,7 +159,11 @@ function cursorForStep(step, map, stepSrcStart, stepFrames) {
 			}
 		}
 		if (a.tClick && a.bbox) {
-			clicks.push({ frame: toStepFrame(a.tClick), x: Math.round(a.bbox.x + a.bbox.width / 2), y: Math.round(a.bbox.y + a.bbox.height / 2) });
+			clicks.push({
+				frame: toStepFrame(a.tClick),
+				x: Math.round(a.bbox.x + a.bbox.width / 2),
+				y: Math.round(a.bbox.y + a.bbox.height / 2),
+			});
 		}
 	}
 	path.sort((a, b) => a.frame - b.frame);
@@ -174,9 +185,9 @@ export function solveTimeline({ events, frames, words, config, flow }) {
 		try {
 			const u = new URL(url);
 			u.host = events.meta.canonicalHost;
-			return u.href;
+			return publicUrl(u.href);
 		} catch {
-			return url;
+			return publicUrl(url);
 		}
 	};
 
@@ -218,7 +229,9 @@ export function solveTimeline({ events, frames, words, config, flow }) {
 		const durationInFrames = toFrames(screenTime);
 		const videoFrames = toFrames(videoDur);
 		const freezeFrames = Math.max(0, durationInFrames - videoFrames);
-		const { zoom, cluster } = zoomEnabled ? planZoom(s, map, srcFrom, durationInFrames, viewport) : { zoom: [], cluster: null };
+		const { zoom, cluster } = zoomEnabled
+			? planZoom(s, map, srcFrom, durationInFrames, viewport)
+			: { zoom: [], cluster: null };
 		const cursor = cursorForStep(s, map, srcFrom, durationInFrames);
 		// Cursor continuity: a step with no pointer motion keeps the cursor parked where it was.
 		if (!cursor.path.length && lastCursor) cursor.path = [{ frame: 0, x: lastCursor.x, y: lastCursor.y }];
@@ -236,7 +249,10 @@ export function solveTimeline({ events, frames, words, config, flow }) {
 		}
 		timelineSteps.push({
 			stepId: s.stepId,
-			title: (s.title && s.title !== s.stepId ? s.title : s.stepId.replace(/[-_]+/g, " ").replace(/^\w/, (c) => c.toUpperCase())),
+			title:
+				s.title && s.title !== s.stepId
+					? s.title
+					: s.stepId.replace(/[-_]+/g, " ").replace(/^\w/, (c) => c.toUpperCase()),
 			from: cursorFrame,
 			durationInFrames,
 			video: { srcFrom: toFrames(srcFrom), srcDuration: videoFrames, freezeFrames },
@@ -262,7 +278,11 @@ export function solveTimeline({ events, frames, words, config, flow }) {
 	const durationInFrames = cursorFrame + outroFrames;
 
 	const introWords = intro
-		? intro.words.map((w) => ({ text: w.word, startFrame: toFrames(0.4 + w.start), endFrame: toFrames(0.4 + w.end) }))
+		? intro.words.map((w) => ({
+				text: w.word,
+				startFrame: toFrames(0.4 + w.start),
+				endFrame: toFrames(0.4 + w.end),
+			}))
 		: [];
 	const outroWords = outro
 		? outro.words.map((w) => ({
@@ -284,7 +304,13 @@ export function solveTimeline({ events, frames, words, config, flow }) {
 		},
 		brand: config.brand,
 		assets: { mezzanine: "mezzanine.mp4", audio: "mixed.wav" },
-		intro: { from: 0, durationInFrames: introFrames, title: events.meta.title, subtitle: events.meta.goal, words: introWords },
+		intro: {
+			from: 0,
+			durationInFrames: introFrames,
+			title: events.meta.title,
+			subtitle: events.meta.goal,
+			words: introWords,
+		},
 		outro: {
 			from: cursorFrame,
 			durationInFrames: outroFrames,

@@ -27,7 +27,12 @@ export const Tutorial = ({ timeline }) => {
 				<IntroCard timeline={timeline} />
 			</Sequence>
 			{steps.map((step, i) => (
-				<Sequence key={step.stepId} from={step.from} durationInFrames={step.durationInFrames} premountFor={30}>
+				<Sequence
+					key={step.stepId}
+					from={step.from}
+					durationInFrames={step.durationInFrames}
+					premountFor={30}
+				>
 					<StepScene timeline={timeline} step={step} index={i} />
 				</Sequence>
 			))}
@@ -41,7 +46,15 @@ export const Tutorial = ({ timeline }) => {
 
 export function shade(hex, amt) {
 	const m = hex.replace("#", "");
-	const n = parseInt(m.length === 3 ? m.split("").map((c) => c + c).join("") : m, 16);
+	const n = parseInt(
+		m.length === 3
+			? m
+					.split("")
+					.map((c) => c + c)
+					.join("")
+			: m,
+		16,
+	);
 	const f = (v) => Math.max(0, Math.min(255, Math.round(v * (1 + amt))));
 	const r = f((n >> 16) & 255);
 	const g = f((n >> 8) & 255);
