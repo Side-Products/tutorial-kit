@@ -4,7 +4,7 @@ import { StepScene } from "./StepScene.jsx";
 import { IntroCard, OutroCard } from "./Cards.jsx";
 import { Captions } from "./Captions.jsx";
 
-export const Tutorial = ({ timeline }) => {
+export const Tutorial = ({ timeline, showCaptions = true }) => {
 	const { brand, intro, outro, steps, assets } = timeline;
 	const colors = brand?.colors || { bg: "#0b0b10", accent: "#8B5CF6", text: "#ffffff" };
 	// The title and end cards already carry their line as set type; captioning it too puts the
@@ -39,7 +39,7 @@ export const Tutorial = ({ timeline }) => {
 			<Sequence from={outro.from} durationInFrames={outro.durationInFrames}>
 				<OutroCard timeline={timeline} />
 			</Sequence>
-			<Captions words={allWords} colors={colors} />
+			{showCaptions && <Captions words={allWords} colors={colors} />}
 		</AbsoluteFill>
 	);
 };

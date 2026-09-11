@@ -72,6 +72,16 @@ The solver turns raw capture plus audio into `compose/timeline.json`, deciding:
 - The docs stage emits `guide.md` (annotated screenshots), `tutorial.json` (agent-executable), `captions.vtt`,
   `chapters.txt`, and `publish-snippets.md`.
 
+### Export for a caption editor
+
+After a normal build, `render <flowId> --no-captions` produces `render/proof-no-captions.mp4`. Add `--final`
+for `final-4k-no-captions.mp4` and `final-1080p-no-captions.mp4`. These copies retain narration, title cards,
+cursor motion, and zooms, and leave the standard renders and caption timings intact.
+
+This option applies to the standalone `render` command. It does not change the cached `build` pipeline. The
+[Faceless workflow](faceless.md) explains how to add and edit captions in a hosted editor. Until the next npm
+release, use the source checkout for `--no-captions`.
+
 ## Commands
 
 ```bash

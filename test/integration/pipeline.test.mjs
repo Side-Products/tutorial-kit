@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { startDemoServer } from "../../examples/basic/server.mjs";
 import demoFlow from "../../examples/basic/flows/hello-world.tutorial.mjs";
 import { checkFlows } from "../../src/check/run.mjs";
@@ -11,6 +12,7 @@ import { composeFlow } from "../../src/compose/run.mjs";
 import { renderFlow } from "../../src/render/render.mjs";
 import { buildDocs } from "../../src/docs/build.mjs";
 import { run, probeDuration } from "../../src/media/encode.mjs";
+import { main } from "../../src/cli.mjs";
 import sharp from "sharp";
 
 test(
@@ -107,5 +109,55 @@ test(
 		assert.ok(!JSON.stringify(tutorial).includes("synthetic-url-value"));
 		assert.match(fs.readFileSync(path.join(outDir, "docs", "guide.md"), "utf8"), /Create sample project/);
 		assert.match(fs.readFileSync(path.join(outDir, "docs", "captions.vtt"), "utf8"), /^WEBVTT/);
+
+		// Exercise the public CLI: a caption-editor export keeps the standard delivery and timings.
+		await assert.rejects(main(["build", "--no-captions"]), /only supported by render/);
+		const originalVideo = fs.readFileSync(video);
+		const timelinePath = path.join(outDir, "compose", "timeline.json");
+		const originalTimeline = fs.readFileSync(timelinePath);
+		const captionsPath = path.join(outDir, "docs", "captions.vtt");
+		const originalCaptions = fs.readFileSync(captionsPath);
+		const configPath = path.join(root, "tutorials.config.mjs");
+		fs.writeFileSync(
+			configPath,
+			`export default ${JSON.stringify({
+				...config,
+				flowsDir: fileURLToPath(new URL("../../examples/basic/flows/", import.meta.url)),
+			})};\n`,
+		);
+		await main(["render", flow.id, "--config", configPath, "--no-captions"]);
+		const cleanVideo = path.join(outDir, "render", "proof-no-captions.mp4");
+		assert.ok(fs.statSync(cleanVideo).size > 1000);
+		assert.deepEqual(fs.readFileSync(video), originalVideo);
+		assert.deepEqual(fs.readFileSync(timelinePath), originalTimeline);
+		assert.deepEqual(fs.readFileSync(captionsPath), originalCaptions);
+		assert.ok(Math.abs((await probeDuration(cleanVideo)) - (await probeDuration(video))) < 0.05);
+
+		const word = timeline.steps
+			.flatMap((step) => step.words || [])
+			.find((w) => w.startFrame >= timeline.intro.from + timeline.intro.durationInFrames);
+		assert.ok(word, "fixture must contain a visible caption");
+		const frame = word.startFrame + 1;
+		const framePaths = [path.join(root, "captioned.png"), path.join(root, "no-captions.png")];
+		const audioPaths = [path.join(root, "captioned.aac"), path.join(root, "no-captions.aac")];
+		for (const [i, source] of [video, cleanVideo].entries()) {
+			await run(["-y", "-i", source, "-vf", `select=eq(n\\,${frame})`, "-frames:v", "1", framePaths[i]]);
+			await run(["-y", "-i", source, "-map", "0:a:0", "-c:a", "copy", audioPaths[i]]);
+		}
+		assert.deepEqual(fs.readFileSync(audioPaths[0]), fs.readFileSync(audioPaths[1]));
+		const { width, height } = await sharp(framePaths[0]).metadata();
+		const region = {
+			left: Math.floor(width * 0.15),
+			top: Math.floor(height * 0.83),
+			width: Math.floor(width * 0.7),
+			height: Math.floor(height * 0.14),
+		};
+		const [withCaptions, withoutCaptions] = await Promise.all(
+			framePaths.map((file) => sharp(file).extract(region).removeAlpha().raw().toBuffer()),
+		);
+		const meanDifference =
+			withCaptions.reduce((sum, value, i) => sum + Math.abs(value - withoutCaptions[i]), 0) /
+			withCaptions.length;
+		assert.ok(meanDifference > 0.2, "the caption region must change when captions are omitted");
 	},
 );

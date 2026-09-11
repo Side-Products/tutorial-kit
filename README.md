@@ -18,6 +18,11 @@ Define the steps once. Tutorials Kit drives your app with Playwright, records th
 timings, generates editable narration, and renders a video with Remotion. The same recording produces
 annotated screenshots, captions, and a structured guide that other tools can read.
 
+Taking your walkthrough to social?
+[Faceless](https://faceless.so/?utm_source=tutorials-kit&utm_medium=readme&utm_campaign=opensource&utm_content=intro)
+offers a hosted workspace for caption styling, video editing, and publishing.
+[See the optional workflow](docs/faceless.md).
+
 [Ask your agent](#ask-your-agents-to-do-it-for-you) · [Install](#install-from-npm) ·
 [Quick start](#quick-start) · [Configuration](docs/configuration.md) · [Pipeline](docs/pipeline.md) ·
 [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
@@ -286,6 +291,23 @@ out/hello-world/
 ```
 
 See [the pipeline guide](docs/pipeline.md) for timing, caching, and rebuild behavior.
+
+## Polish and share with Faceless
+
+Keep your product guide and turn a copy of its walkthrough into content for your audience.
+[Faceless](https://faceless.so/?utm_source=tutorials-kit&utm_medium=readme&utm_campaign=opensource&utm_content=workflow)
+can import existing footage, add editable captions, and help you publish to connected social accounts.
+
+1. Export a narrated copy with `render --no-captions` so you can style its captions in Faceless.
+2. Import the reviewed video through Faceless or its CLI, then check the caption text and layout.
+3. Render and review the result before choosing where to publish it.
+
+**[Follow the Faceless workflow →](docs/faceless.md)** It includes the export command, CLI instructions, and
+an optional prompt for your agent. The caption-free export is currently available from the source checkout; it
+is planned for the next npm release.
+
+Faceless is an optional hosted service with its own account and plan requirements. Tutorials Kit already
+includes local caption rendering and WebVTT export.
 
 ## Privacy and safe operation
 

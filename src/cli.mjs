@@ -25,6 +25,7 @@ Commands:
 Options:
   --config <path>      Path to tutorials.config.mjs (default: ./tutorials.config.mjs)
   --headed             Run the capture browser headed (debugging; window may be clamped by screen size)
+  --no-captions        Render a separate copy without burned-in captions for editing in Faceless or another editor
 `;
 
 export async function main(argv) {
@@ -39,6 +40,7 @@ export async function main(argv) {
 			all: { type: "boolean", default: false },
 			yes: { type: "boolean", default: false },
 			new: { type: "boolean", default: false },
+			"no-captions": { type: "boolean", default: false },
 			help: { type: "boolean", default: false },
 		},
 	});
@@ -46,6 +48,9 @@ export async function main(argv) {
 	if (!command || values.help) {
 		console.log(HELP);
 		return;
+	}
+	if (values["no-captions"] && command !== "render") {
+		throw new Error("--no-captions is only supported by render; export a separate copy after build");
 	}
 	const config = await loadConfig(values.config);
 	const flows = await loadFlows(config);
@@ -90,7 +95,10 @@ export async function main(argv) {
 	if (command === "render") {
 		const { renderFlow } = await import("./render/render.mjs");
 		for (const flow of await resolveSelection(flows, ids, config)) {
-			await renderFlow(flow, config, { mode: values.final ? "final" : "proof" });
+			await renderFlow(flow, config, {
+				mode: values.final ? "final" : "proof",
+				captions: !values["no-captions"],
+			});
 		}
 		return;
 	}

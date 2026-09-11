@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Add `render --no-captions` to export a separate narrated video for external caption editing while keeping
+  the original render and WebVTT captions.
+- Document an optional Faceless workflow for importing footage, editing captions, and rendering in the cloud.
+- Add a copyable agent setup prompt and assistant buttons, including prompt links where supported.
+
 ## 0.1.4 (2026-09-11)
 
 - Replace the initial icon with the approved open-guide mark, combining written steps and video playback.

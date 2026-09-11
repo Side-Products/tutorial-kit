@@ -56,7 +56,7 @@ async function getBundle(publicDir) {
 	return bundleCache.get(publicDir);
 }
 
-export async function renderFlow(flow, config, { mode = "proof" } = {}) {
+export async function renderFlow(flow, config, { mode = "proof", captions = true } = {}) {
 	const outDir = flowOutDir(config, flow.id);
 	const composeDir = path.join(outDir, "compose");
 	const timelinePath = path.join(composeDir, "timeline.json");
@@ -69,13 +69,14 @@ export async function renderFlow(flow, config, { mode = "proof" } = {}) {
 	const { renderMedia, selectComposition, ensureBrowser } = await import("@remotion/renderer");
 	await ensureBrowser();
 	const serveUrl = await getBundle(composeDir);
-	const inputProps = { timeline };
+	const inputProps = { timeline, showCaptions: captions };
 	const composition = await selectComposition({ serveUrl, id: "Tutorial", inputProps });
 
 	const renderDir = path.join(outDir, "render");
 	fs.mkdirSync(renderDir, { recursive: true });
 	const proof = mode === "proof";
-	const outPath = path.join(renderDir, proof ? "proof.mp4" : "final-4k.mp4");
+	const suffix = captions ? "" : "-no-captions";
+	const outPath = path.join(renderDir, `${proof ? "proof" : "final-4k"}${suffix}.mp4`);
 	const concurrency = Math.max(
 		2,
 		Number(process.env.RENDER_CONCURRENCY) || Math.min(8, os.cpus().length - 2),
@@ -111,7 +112,7 @@ export async function renderFlow(flow, config, { mode = "proof" } = {}) {
 	);
 
 	if (!proof) {
-		const hd = path.join(renderDir, "final-1080p.mp4");
+		const hd = path.join(renderDir, `final-1080p${suffix}.mp4`);
 		await run([
 			"-y",
 			"-i",
