@@ -1,4 +1,4 @@
-# Contributing to Tutorial Kit
+# Contributing to Tutorials Kit
 
 Small, focused pull requests are welcome. Discuss changes to the CLI or artifact formats in an issue before
 doing substantial work.

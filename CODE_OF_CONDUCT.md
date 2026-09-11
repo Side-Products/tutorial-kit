@@ -1,6 +1,6 @@
 # Code of conduct
 
-Tutorial Kit welcomes contributors with different backgrounds and levels of experience. Help make its issues,
+Tutorials Kit welcomes contributors with different backgrounds and levels of experience. Help make its issues,
 pull requests, and other project spaces useful and respectful.
 
 ## Expected behavior

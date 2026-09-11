@@ -36,7 +36,7 @@ test(
 			auth: null,
 			selfHeal: false,
 			allowLeakage: true,
-			brand: { name: "Tutorial Kit", colors: { bg: "#141020", accent: "#A78BFA", text: "#FFFFFF" } },
+			brand: { name: "Tutorials Kit", colors: { bg: "#141020", accent: "#A78BFA", text: "#FFFFFF" } },
 		};
 		const flow = { ...structuredClone(demoFlow), declarative: true, hash: "synthetic-fixture" };
 		flow.steps[0].actions[0].path = "/?token=synthetic-url-value#private-fragment";

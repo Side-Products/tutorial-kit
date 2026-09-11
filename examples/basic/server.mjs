@@ -24,6 +24,6 @@ export async function startDemoServer(port = 4000) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const server = await startDemoServer();
-	console.log(`Tutorial Kit demo: http://127.0.0.1:${server.address().port}`);
+	console.log(`Tutorials Kit demo: http://127.0.0.1:${server.address().port}`);
 	for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, () => server.close());
 }

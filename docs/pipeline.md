@@ -77,10 +77,10 @@ The solver turns raw capture plus audio into `compose/timeline.json`, deciding:
 ```bash
 cd tutorials
 
-node /path/to/tutorial-kit/bin/tutorial-kit.js plan "..." --yes   # draft + record a new flow
-node /path/to/tutorial-kit/bin/tutorial-kit.js build <flowId>     # proof build
-node /path/to/tutorial-kit/bin/tutorial-kit.js build <flowId> --final   # 4K + 1080p delivery
-node /path/to/tutorial-kit/bin/tutorial-kit.js check              # headless, no recording
+node /path/to/tutorials-kit/bin/tutorial-kit.js plan "..." --yes   # draft + record a new flow
+node /path/to/tutorials-kit/bin/tutorial-kit.js build <flowId>     # proof build
+node /path/to/tutorials-kit/bin/tutorial-kit.js build <flowId> --final   # 4K + 1080p delivery
+node /path/to/tutorials-kit/bin/tutorial-kit.js check              # headless, no recording
 ```
 
 - Flow references accept plain English: `build the billing tutorial`.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 (2026-09-11)
+
+- Use the Tutorials Kit name throughout the documentation and local demo.
+- Update repository metadata, badges, banner, and reporting links for `Side-Products/tutorials-kit`.
+- Use `tutorials-kit` in generated CLI guidance.
+
 ## 0.1.1 (2026-09-11)
 
 - Publish as the unscoped npm package `tutorials-kit`.
@@ -8,8 +14,8 @@
 
 ## 0.1.0 (2026-09-11)
 
-First public npm release, available as `@pushpit07/tutorial-kit` with the `tutorial-kit` and `tkit` CLI
-commands.
+First public npm release, originally published as `@pushpit07/tutorial-kit` with the `tutorial-kit` and `tkit`
+CLI commands.
 
 ### Open-source preparation
 

@@ -48,7 +48,7 @@ export async function planCommand(phrase, config, { yes = false, headed = false,
 	const existing = forceNew ? null : await resolveFlowRef(flows, phrase, config);
 	if (existing) {
 		console.log(`matched existing flow "${existing.id}" (${existing.title})`);
-		console.log(`run: tutorial-kit build ${existing.id}`);
+		console.log(`run: tutorials-kit build ${existing.id}`);
 		return existing;
 	}
 	if (!config.sitemap?.length) {
@@ -108,9 +108,9 @@ Return JSON {"id","title","goal","steps":[{"id","say","actions":[...]}]}.`,
 		const fresh = (await loadFlows(config)).find((f) => f.id === spec.id);
 		const { recordFlow } = await import("../capture/record.mjs");
 		await recordFlow(fresh, config, { headed });
-		console.log(`recorded. Next: tutorial-kit build ${spec.id}`);
+		console.log(`recorded. Next: tutorials-kit build ${spec.id}`);
 	} else {
-		console.log(`review/edit the file, then: tutorial-kit build ${spec.id}`);
+		console.log(`review/edit the file, then: tutorials-kit build ${spec.id}`);
 	}
 	return spec;
 }

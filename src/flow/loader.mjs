@@ -80,7 +80,7 @@ export async function resolveSelection(flows, ids, config) {
 	const match = await resolveFlowRef(flows, phrase, config);
 	if (!match) {
 		throw new Error(
-			`no flow matches "${phrase}". Available: ${flows.map((x) => x.id).join(", ") || "(none)"}. Try: tutorial-kit plan "${phrase}"`,
+			`no flow matches "${phrase}". Available: ${flows.map((x) => x.id).join(", ") || "(none)"}. Try: tutorials-kit plan "${phrase}"`,
 		);
 	}
 	console.log(`"${phrase}" -> flow ${match.id}`);

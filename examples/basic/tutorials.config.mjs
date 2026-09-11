@@ -6,7 +6,7 @@ export default {
 	selfHeal: false,
 	allowLeakage: true, // this fixture intentionally records a loopback URL
 	brand: {
-		name: "Tutorial Kit",
+		name: "Tutorials Kit",
 		colors: { bg: "#141020", accent: "#A78BFA", text: "#FFFFFF" },
 	},
 	sitemap: [{ path: "/", purpose: "sample project workspace" }],

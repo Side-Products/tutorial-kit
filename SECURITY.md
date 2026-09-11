@@ -1,13 +1,13 @@
 # Security
 
-Tutorial Kit is a local automation CLI for trusted configurations, trusted flows, and dedicated demo accounts.
-It is not a sandbox for user-uploaded JavaScript or a service for executing arbitrary URLs on behalf of
-strangers.
+Tutorials Kit is a local automation CLI for trusted configurations, trusted flows, and dedicated demo
+accounts. It is not a sandbox for user-uploaded JavaScript or a service for executing arbitrary URLs on behalf
+of strangers.
 
 ## Report a vulnerability
 
 Use GitHub's private **Report a vulnerability** form when available:
-[submit a private report](https://github.com/Side-Products/tutorial-kit/security/advisories/new).
+[submit a private report](https://github.com/Side-Products/tutorials-kit/security/advisories/new).
 
 If the form is unavailable, open an issue containing only a request for a private security contact. Do not
 include exploit details, credentials, customer data, or an unpatched proof of concept in that issue.

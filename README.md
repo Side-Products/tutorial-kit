@@ -1,15 +1,15 @@
-# Tutorial Kit
+# Tutorials Kit
 
 **Turn a browser workflow into a narrated video and a written guide.**
 
-[![CI](https://github.com/Side-Products/tutorial-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/Side-Products/tutorial-kit/actions/workflows/ci.yml)
+[![CI](https://github.com/Side-Products/tutorials-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/Side-Products/tutorials-kit/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/tutorials-kit.svg)](https://www.npmjs.com/package/tutorials-kit)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js: 22+](https://img.shields.io/badge/node.js-22%2B-339933.svg)](package.json)
 
-![A browser workflow becoming a narrated tutorial video and an annotated written guide.](https://raw.githubusercontent.com/Side-Products/tutorial-kit/master/docs/assets/tutorial-kit-banner.webp)
+![A browser workflow becoming a narrated tutorial video and an annotated written guide.](https://raw.githubusercontent.com/Side-Products/tutorials-kit/master/docs/assets/tutorial-kit-banner.webp)
 
-Define the steps once. Tutorial Kit drives your app with Playwright, records the screen and interaction
+Define the steps once. Tutorials Kit drives your app with Playwright, records the screen and interaction
 timings, generates editable narration, and renders a video with Remotion. The same recording produces
 annotated screenshots, captions, and a structured guide that other tools can read.
 
@@ -61,8 +61,8 @@ Use **Node.js 22 or newer**, npm, and a current **FFmpeg** installation with `li
 Chrome is recommended for recording pages that contain MP4 video. Bundled Chromium is the fallback.
 
 ```bash
-git clone https://github.com/Side-Products/tutorial-kit.git
-cd tutorial-kit
+git clone https://github.com/Side-Products/tutorials-kit.git
+cd tutorials-kit
 npm ci
 npx playwright install chromium
 ffmpeg -version
@@ -256,12 +256,12 @@ lives in `src/`, CLI entry points in `bin/`, examples in `examples/`, and histor
 `spike/`.
 
 Contributions are welcome: start with [CONTRIBUTING.md](CONTRIBUTING.md). For bugs or feature proposals,
-[open an issue](https://github.com/Side-Products/tutorial-kit/issues). Report vulnerabilities privately as
+[open an issue](https://github.com/Side-Products/tutorials-kit/issues). Report vulnerabilities privately as
 described in [SECURITY.md](SECURITY.md).
 
 ## License
 
-Tutorial Kit's own source code is licensed under [MIT](LICENSE).
+Tutorials Kit's own source code is licensed under [MIT](LICENSE).
 [Remotion has separate licensing terms](https://www.remotion.dev/docs/license), including conditions for
 commercial use. FFmpeg, browser binaries, AI services, voices, and media assets also retain their own terms.
 See [third-party notices](THIRD_PARTY_NOTICES.md).
