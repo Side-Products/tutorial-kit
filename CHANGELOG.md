@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4 (2026-09-11)
+
+- Replace the initial icon with the approved open-guide mark, combining written steps and video playback.
+- Update the light and dark logos, favicon, Apple touch icon, and brand guide with ivory and graphite
+  branding.
+- Pin README logo URLs to this release so published packages display the matching artwork.
+
 ## 0.1.3 (2026-09-11)
 
 - Add an original folded play-ribbon icon and matching Tutorials Kit logos for light and dark backgrounds.

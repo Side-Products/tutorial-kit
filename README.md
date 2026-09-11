@@ -1,7 +1,7 @@
 <h1>
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Side-Products/tutorials-kit/master/docs/assets/tutorials-kit-logo-dark.png">
-    <img src="https://raw.githubusercontent.com/Side-Products/tutorials-kit/master/docs/assets/tutorials-kit-logo-light.png" alt="Tutorials Kit" width="520">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Side-Products/tutorials-kit/v0.1.4/docs/assets/tutorials-kit-logo-dark.png">
+    <img src="https://raw.githubusercontent.com/Side-Products/tutorials-kit/v0.1.4/docs/assets/tutorials-kit-logo-light.png" alt="Tutorials Kit" width="520">
   </picture>
 </h1>
 

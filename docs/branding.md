@@ -1,7 +1,7 @@
 # Brand assets
 
-The Tutorials Kit mark combines a folded document corner with a play symbol, connecting browser workflows,
-tutorial videos, and written guides.
+The Tutorials Kit mark is an open guide: written steps on the left and a play symbol on the right. It
+represents the two outputs of a browser workflow: a written guide and a narrated tutorial video.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/tutorials-kit-logo-dark.png">
@@ -18,19 +18,18 @@ tutorial videos, and written guides.
 | [Favicon, 32 × 32](assets/tutorials-kit-icon-32.png)              | Browser tabs and other small placements.                                |
 | [Apple touch icon, 180 × 180](../apple-touch-icon.png)            | Home-screen icons and repository tools that discover a root-level icon. |
 
-The icon PNGs have transparent margins around the charcoal tile. The wordmarks have solid backgrounds; choose
-the version that matches the surrounding surface. Preserve the aspect ratio and leave some space around each
-asset.
+The icon PNGs have transparent backgrounds around the ivory and graphite guide. The wordmarks have solid
+backgrounds; choose the version that matches the surrounding surface. Preserve the aspect ratio and leave some
+space around each asset.
 
 ## Colors
 
-| Color           | Hex       |
-| --------------- | --------- |
-| Violet          | `#8B5CF6` |
-| Deep violet     | `#7C3AED` |
-| Lavender        | `#C4B5FD` |
-| Charcoal tile   | `#181421` |
-| Dark background | `#0D1117` |
+| Color            | Hex       |
+| ---------------- | --------- |
+| Warm ivory       | `#F5F3EF` |
+| Graphite         | `#161719` |
+| Light background | `#FFFFFF` |
+| Dark background  | `#0D1117` |
 
 Use **Tutorials Kit** as the displayed product name and `tutorials-kit` for the npm package and primary CLI
 command.
