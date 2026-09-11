@@ -12,6 +12,7 @@
 		"src",
 		"templates",
 		"README.md",
+		"CHANGELOG.md",
 		"LICENSE",
 		"SECURITY.md",
 		"THIRD_PARTY_NOTICES.md",
@@ -21,6 +22,10 @@
 		"node": ">=22"
 	},
 	"license": "MIT",
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
 	"dependencies": {
 		"@remotion/bundler": "4.0.523",
 		"@remotion/renderer": "4.0.523",

@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 (2026-09-11)
+
+First public npm release, available as `tutorial-kit` with the `tutorial-kit` and `tkit` CLI commands.
 
 ### Open-source preparation
 

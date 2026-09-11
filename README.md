@@ -3,17 +3,18 @@
 **Turn a browser workflow into a narrated video and a written guide.**
 
 [![CI](https://github.com/Side-Products/tutorial-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/Side-Products/tutorial-kit/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/tutorial-kit.svg)](https://www.npmjs.com/package/tutorial-kit)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js: 22+](https://img.shields.io/badge/node.js-22%2B-339933.svg)](package.json)
 
-![A browser workflow becoming a narrated tutorial video and an annotated written guide.](docs/assets/tutorial-kit-banner.webp)
+![A browser workflow becoming a narrated tutorial video and an annotated written guide.](https://raw.githubusercontent.com/Side-Products/tutorial-kit/master/docs/assets/tutorial-kit-banner.webp)
 
 Define the steps once. Tutorial Kit drives your app with Playwright, records the screen and interaction
 timings, generates editable narration, and renders a video with Remotion. The same recording produces
 annotated screenshots, captions, and a structured guide that other tools can read.
 
-[Quick start](#quick-start) · [Configuration](docs/configuration.md) · [Pipeline](docs/pipeline.md) ·
-[Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+[Install](#install-from-npm) · [Quick start](#quick-start) · [Configuration](docs/configuration.md) ·
+[Pipeline](docs/pipeline.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
 ## What you get
 
@@ -30,6 +31,27 @@ annotated screenshots, captions, and a structured guide that other tools can rea
 This is an early-stage CLI. Flow and artifact formats may change before 1.0. Browser capture and rendering run
 locally; planning and script generation use an OpenAI-compatible provider, and voice synthesis uses
 ElevenLabs. Those services require your own accounts and may incur charges.
+
+## Install from npm
+
+Use **Node.js 22 or newer**. Install the CLI in your product project:
+
+```bash
+npm install --save-dev tutorial-kit
+npx tutorial-kit --help
+npx playwright install chromium
+```
+
+Video composition and rendering also require **FFmpeg** with `libx264` and AAC support; see the installation
+notes below. [Add a configuration and flow for your app](#use-it-with-your-app), then run:
+
+```bash
+npx tutorial-kit check --config tutorials/tutorials.config.mjs
+npx tutorial-kit build --config tutorials/tutorials.config.mjs
+```
+
+For npm installations, use `npx tutorial-kit` in place of `node bin/tutorial-kit.js` in the examples below. To
+try the included local demo, follow the source checkout walkthrough.
 
 ## Quick start
 
