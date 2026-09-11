@@ -10,6 +10,19 @@ import { run } from "../media/encode.mjs";
 const ENTRY = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "remotion", "index.jsx");
 const bundleCache = new Map();
 
+// Remotion's AAC can retain an encoder delay. Mux the timeline's PCM track
+// directly so the voice and its word timestamps share the same starting point.
+export async function syncRenderedAudio({ videoPath, audioPath, durationSec }) {
+	const synced = path.join(path.dirname(videoPath), `.audio-synced-${path.basename(videoPath)}`);
+	await run([
+		"-y", "-i", videoPath, "-i", audioPath,
+		"-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy",
+		"-c:a", "aac", "-b:a", "192k", "-af", "apad", "-t", String(durationSec),
+		"-movflags", "+faststart", synced,
+	]);
+	fs.renameSync(synced, videoPath);
+}
+
 async function getBundle(publicDir) {
 	if (!bundleCache.has(publicDir)) {
 		const promise = (async () => {
@@ -60,12 +73,17 @@ export async function renderFlow(flow, config, { mode = "proof" } = {}) {
 			if (Math.round(progress * 100) % 20 === 0) process.stdout.write(`\r${Math.round(progress * 100)}%   `);
 		},
 	});
+	await syncRenderedAudio({
+		videoPath: outPath,
+		audioPath: path.join(composeDir, timeline.assets.audio),
+		durationSec: composition.durationInFrames / composition.fps,
+	});
 	process.stdout.write("\r");
 	console.log(`rendered in ${((Date.now() - t0) / 1000).toFixed(0)}s -> ${outPath} (${(fs.statSync(outPath).size / 1e6).toFixed(1)}MB)`);
 
 	if (!proof) {
 		const hd = path.join(renderDir, "final-1080p.mp4");
-		await run(["-y", "-i", outPath, "-vf", "scale=1920:1080:flags=lanczos", "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", hd]);
+		await run(["-y", "-i", outPath, "-vf", "scale=1920:1080:flags=lanczos", "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-c:a", "copy", "-movflags", "+faststart", hd]);
 		console.log(`downscaled -> ${hd}`);
 	}
 	return outPath;

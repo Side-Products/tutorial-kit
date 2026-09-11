@@ -40,7 +40,7 @@ export async function composeFlow(flow, config) {
 	fs.mkdirSync(composeDir, { recursive: true });
 
 	const frames = framesMeta.frames;
-	const { timeline, map, audioPlacements } = solveTimeline({ events, frames, words, config });
+	const { timeline, map, audioPlacements } = solveTimeline({ events, frames, words, config, flow });
 
 	console.log("assembling mezzanine...");
 	const durations = frameOutDurations(frames, map);
@@ -66,6 +66,13 @@ export async function composeFlow(flow, config) {
 		music: musicTrack ? { ...config.music, track: musicTrack } : null,
 		outPath: path.join(composeDir, "mixed.wav"),
 	});
+
+	if (config.brand?.logo) {
+		const logoSrc = path.resolve(config.root, config.brand.logo);
+		const logoName = `logo${path.extname(logoSrc)}`;
+		fs.copyFileSync(logoSrc, path.join(composeDir, logoName));
+		timeline.brand = { ...timeline.brand, logo: logoName };
+	}
 
 	fs.writeFileSync(path.join(composeDir, "timeline.json"), JSON.stringify(timeline, null, 1));
 	const secs = (timeline.meta.durationInFrames / timeline.meta.fps).toFixed(1);

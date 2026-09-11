@@ -38,7 +38,7 @@ function buildPrompt(events, config) {
 	const brand = config.brand?.name || "the product";
 	const steps = events.steps.map((s) => {
 		// Cap the budget: raw duration includes capture stalls and waitLong windows that the solver
-		// compresses to seconds, so an uncapped budget writes half-minute paragraphs for a 5s step.
+		compresses to seconds, so an uncapped budget writes half-minute paragraphs for a 5s step.
 		const secs = Math.min(12, Math.max(2.5, (s.tEnd - s.tStart) * 0.8));
 		const budget = Math.max(8, Math.round(secs * WORDS_PER_SEC));
 		const acts = s.actions.map(describeAction).filter(Boolean);

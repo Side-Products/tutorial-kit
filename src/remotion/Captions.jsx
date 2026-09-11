@@ -29,7 +29,7 @@ export const Captions = ({ words, colors }) => {
 		<div
 			style={{
 				position: "absolute",
-				bottom: 86,
+				bottom: 172,
 				left: 0,
 				right: 0,
 				display: "flex",
@@ -40,27 +40,19 @@ export const Captions = ({ words, colors }) => {
 			<div
 				style={{
 					maxWidth: "72%",
-					padding: "22px 44px",
-					borderRadius: 22,
-					background: "rgba(6,6,10,0.62)",
-					border: "1px solid rgba(255,255,255,0.10)",
-					fontSize: 56,
-					fontWeight: 600,
+					padding: "18px 40px",
+					borderRadius: 14,
+					background: `${colors.bg || "#0B0713"}D9`,
+					fontSize: 52,
+					fontWeight: 500,
 					letterSpacing: 0.2,
-					color: colors.text || "#fff",
+					color: "rgba(255,255,255,0.95)",
 					textAlign: "center",
-					lineHeight: 1.25,
+					lineHeight: 1.3,
+					textShadow: "0 2px 10px rgba(0,0,0,0.45)",
 				}}
 			>
-				{page.words.map((w, i) => {
-					const active = frame >= w.startFrame && frame <= w.endFrame + 2;
-					return (
-						<span key={i} style={{ color: active ? colors.accent || "#A78BFA" : "rgba(255,255,255,0.92)" }}>
-							{w.text}
-							{i < page.words.length - 1 ? " " : ""}
-						</span>
-					);
-				})}
+				{page.words.map((w) => w.text).join(" ")}
 			</div>
 		</div>
 	);

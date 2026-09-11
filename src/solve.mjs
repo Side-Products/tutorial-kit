@@ -5,8 +5,6 @@ const FPS = 30;
 const IDLE_MAX = 0.9; // gaps longer than this get compressed...
 const IDLE_OUT = 0.45; // ...to this (gentler than a hard jump cut)
 const LAPSE_OUT = 2.5; // waitLong windows become this long (fast forward)
-const TRAVEL_MAX = 1.2; // cursor travel before a click, capped to this so the target screen...
-const TRAVEL_OUT = 0.9; // ...appears fast instead of dwelling on the pre-click screen 1:1
 
 export function buildRetimeMap(events, frames) {
 	const t0 = frames[0].t;
@@ -14,26 +12,12 @@ export function buildRetimeMap(events, frames) {
 	const windows = [];
 	for (const s of events.steps) {
 		for (const a of s.actions) {
-			const start = Math.max(a.tStart, t0);
-			const end = Math.min(a.tEnd, tEnd);
-			// A click's pre-click stretch is cursor travel over the OUTGOING screen; the new screen
-			// only appears at tClick. Left 1:1 that dead travel is what makes narration land before
-			// its screen. Split it: compress the travel, keep the reveal + settle.
-			if (a.kind === "click" && a.tClick && a.tClick > start + 0.05 && a.tClick < end) {
-				windows.push({ start, end: Math.min(a.tClick, tEnd), kind: "travel" });
-				windows.push({ start: Math.min(a.tClick, tEnd), end, kind: "activity" });
-			} else {
-				windows.push({ start, end, kind: a.kind === "waitLong" ? "timelapse" : "activity" });
-			}
+			const kind = a.kind === "waitLong" ? "timelapse" : "activity";
+			windows.push({ start: Math.max(a.tStart, t0), end: Math.min(a.tEnd, tEnd), kind });
 		}
 	}
 	windows.sort((x, y) => x.start - y.start);
 
-	const outFor = (kind, d) => {
-		if (kind === "timelapse") return Math.min(d, LAPSE_OUT);
-		if (kind === "travel") return d > TRAVEL_MAX ? TRAVEL_OUT : d;
-		return d;
-	};
 	const segs = [];
 	const pushGap = (from, to) => {
 		const d = to - from;
@@ -46,7 +30,7 @@ export function buildRetimeMap(events, frames) {
 		const s = Math.max(w.start, cur);
 		const e = Math.max(w.end, s);
 		if (e > s) {
-			segs.push({ srcStart: s, srcEnd: e, outDur: outFor(w.kind, e - s) });
+			segs.push({ srcStart: s, srcEnd: e, outDur: w.kind === "timelapse" ? Math.min(e - s, LAPSE_OUT) : e - s });
 		}
 		cur = Math.max(cur, e);
 	}
@@ -116,7 +100,7 @@ function planZoom(step, map, stepSrcStart, stepFrames, viewport) {
 	const h = best.maxY - best.minY;
 	if (w > viewport.width * 0.45 || h > viewport.height * 0.45) return { zoom: [], cluster: null };
 	const maxDim = Math.max(w, h * 1.6);
-	const scale = maxDim < 260 ? 1.45 : maxDim < 620 ? 1.3 : 1.2;
+	const scale = maxDim < 260 ? 1.7 : maxDim < 620 ? 1.5 : 1.35;
 
 	const toStepFrame = (t) => Math.round((map(t) - stepSrcStart) * FPS);
 	const first = best.actions[0];
@@ -159,12 +143,8 @@ function cursorForStep(step, map, stepSrcStart, stepFrames) {
 	return { path, clicks };
 }
 
-export function solveTimeline({ events, frames, words, config, flow }) {
+export function solveTimeline({ events, frames, words, config }) {
 	const viewport = events.meta.viewport;
-	// Per-flow opt-out of the click zoom. Wizard-style creation flows click "Next" every few
-	// seconds; a zoom punch-in on each one reads as constant, disturbing motion, so those flows
-	// set `zoom: false` and stay at a steady 1x.
-	const zoomEnabled = flow?.zoom !== false;
 	const { map, totalOut } = buildRetimeMap(events, frames);
 	const blockFor = (id) => words.blocks.find((b) => b.blockId === id);
 
@@ -201,24 +181,12 @@ export function solveTimeline({ events, frames, words, config, flow }) {
 		const srcEnd = map(s.tEnd);
 		const videoDur = Math.max(0.2, srcEnd - srcFrom);
 		const audioDur = block ? block.durationSec : 0;
-		// Anchor narration to the screen REVEAL. In the arrive-then-show flow, a step's own screen
-		// only appears when its leading click lands (the travel before it is now compressed). Start
-		// the voice just before that reveal so it plays over the correct screen with no dead gap,
-		// instead of over the outgoing screen or seconds after the screen is already up.
-		const clickT = s.actions.map((a) => a.tClick).find(Boolean);
-		const revealOffset = clickT ? Math.max(0, map(clickT) - srcFrom) : 0;
-		const baseLead = timelineSteps.length === 0 ? Math.max(0.25, introAudioSpill + 0.1) : 0.25;
-		// Two step shapes. Arrive-then-show: the first click lands within ~2s (compressed travel)
-		// and REVEALS this step's screen, so narration starts just after it. Show-then-act: the
-		// click comes late (after dwells or a timelapse) and LEAVES the screen, so narration must
-		// start at the top or it plays over whatever the click navigates to.
-		const isArrival = clickT && revealOffset <= 2.0;
-		const audioLead = isArrival ? revealOffset + 0.35 : baseLead;
+		const audioLead = 0.25 + (timelineSteps.length === 0 ? introAudioSpill : 0);
 		const screenTime = Math.max(videoDur + 0.25, audioLead + audioDur + 0.5);
 		const durationInFrames = toFrames(screenTime);
 		const videoFrames = toFrames(videoDur);
 		const freezeFrames = Math.max(0, durationInFrames - videoFrames);
-		const { zoom, cluster } = zoomEnabled ? planZoom(s, map, srcFrom, durationInFrames, viewport) : { zoom: [], cluster: null };
+		const { zoom, cluster } = planZoom(s, map, srcFrom, durationInFrames, viewport);
 		const cursor = cursorForStep(s, map, srcFrom, durationInFrames);
 		// Cursor continuity: a step with no pointer motion keeps the cursor parked where it was.
 		if (!cursor.path.length && lastCursor) cursor.path = [{ frame: 0, x: lastCursor.x, y: lastCursor.y }];

@@ -76,10 +76,18 @@ export async function buildDocs(flow, config) {
 	for (const [i, s] of events.steps.entries()) {
 		const tStep = timeline.steps.find((x) => x.stepId === s.stepId);
 		const firstTarget = s.actions.find((a) => (a.kind === "click" || a.kind === "fill") && a.bbox);
+		// Every step shows its RESULT (the after shot). If the recorder re-verified the clicked
+		// element there (bboxAfter: sidebar links persist across navigation, tabs stay in place),
+		// draw the box on it. If the element is gone from the destination (grid cards), fall back
+		// to the click-moment frame, whose scroll matches the recorded bbox exactly.
+		const navigated = canonical(s.urlAfter) !== canonical(s.urlBefore);
+		// Also fall back to the click frame when the click opened a modal: the after-shot shows
+		// the dialog, and the clicked button behind it is dimmed.
+		const useClickFrame = firstTarget && ((navigated && !s.bboxAfter) || s.dialogAfter);
 		const shotName = `${s.stepId}.jpg`;
 		await annotateShot({
-			shotPath: path.join(capDir, firstTarget ? s.shotBefore : s.shotAfter),
-			bbox: firstTarget?.bbox || null,
+			shotPath: path.join(capDir, useClickFrame ? firstTarget?.shotAtClick || s.shotBefore : s.shotAfter),
+			bbox: useClickFrame ? firstTarget?.bbox || null : s.bboxAfter || null,
 			dsf,
 			accent,
 			outPath: path.join(shotsOut, shotName),

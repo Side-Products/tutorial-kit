@@ -4,6 +4,7 @@ import { CursorLayer } from "./Cursor.jsx";
 import { shade } from "./Tutorial.jsx";
 
 const EASE = Easing.bezier(0.35, 0, 0.15, 1);
+const ZOOM_INTENSITY = 0.5;
 
 // Zoom/pan: keyframes carry {frame, scale, x, y} with focal in viewport CSS px. We translate so
 // the focal point sits at stage center, clamped so the screen edges never enter the frame.
@@ -16,7 +17,13 @@ function zoomTransform(zoom, frame, vw, vh) {
 	let fy = interpolate(frame, frames, kfs.map((k) => k.y), { easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 	fx = Math.max(vw / 2 / s, Math.min(vw - vw / 2 / s, fx));
 	fy = Math.max(vh / 2 / s, Math.min(vh - vh / 2 / s, fy));
-	return { scale: s, tx: s * (vw / 2 - fx), ty: s * (vh / 2 - fy) };
+	// Halve the movement away from the unzoomed view, including the pan. Apply this
+	// when rendering so existing timelines get the same reduction as future builds.
+	return {
+		scale: 1 + (s - 1) * ZOOM_INTENSITY,
+		tx: s * (vw / 2 - fx) * ZOOM_INTENSITY,
+		ty: s * (vh / 2 - fy) * ZOOM_INTENSITY,
+	};
 }
 
 export const StepScene = ({ timeline, step, index }) => {
@@ -149,7 +156,7 @@ const StepChip = ({ index, total, title, colors, stageW, top }) => {
 function safeUrl(u) {
 	try {
 		const url = new URL(u);
-		return url.host + (url.pathname === "/" ? "" : url.pathname);
+		return `${url.protocol}//${url.host}${url.pathname === "/" ? "" : url.pathname}`;
 	} catch {
 		return u || "";
 	}

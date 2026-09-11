@@ -6,8 +6,7 @@
 const easeInOutCubic = (u) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
 
 export class Driver {
-	constructor({ page, baseUrl, viewport, onEvent, pacing = 1, shotsDir = null }) {
-		this.shotsDir = shotsDir;
+	constructor({ page, baseUrl, viewport, onEvent, pacing = 1 }) {
 		this.page = page;
 		this.baseUrl = baseUrl.replace(/\/$/, "");
 		this.viewport = viewport;
@@ -223,41 +222,19 @@ export class Driver {
 		const locator = this.loc(sel);
 		const fromY = await this.scrollY();
 		await this.scrollIntoView(locator);
-		// Scrolling reveals lazy-loaded card previews; give them a beat to finish so shots and
-		// the recording never show blank tiles.
-		await this.waitForStable({ timeout: 5000 });
 		await this.settle(150);
-		let bbox = await locator.boundingBox();
+		const bbox = await locator.boundingBox();
 		if (!bbox) throw new Error(`click: target has no bbox: ${this.selStr(sel)}`);
 		const text = await this.elementText(locator);
 		const pointer = await this.movePointer(bbox.x + bbox.width / 2, bbox.y + bbox.height / 2);
 		await this.settle(100);
-		// The click lands at coordinates, not on the locator: toolbars reflow while sibling panels
-		// animate open, so a center measured 250ms ago can now belong to the neighboring item.
-		// Chase the element until its position stabilizes, then click the fresh center.
-		for (let i = 0; i < 4; i++) {
-			const now = await locator.boundingBox();
-			if (!now) break;
-			const drift = Math.hypot(now.x - bbox.x, now.y - bbox.y);
-			bbox = now;
-			if (drift <= 2) break;
-			await this.movePointer(bbox.x + bbox.width / 2, bbox.y + bbox.height / 2);
-			await this.settle(120);
-		}
-		// Docs draws the click highlight on a frame; capture it now, at the exact layout the final
-		// bbox was measured against (the step's before-shot may differ in scroll and reflow).
-		let shotAtClick = null;
-		if (this.shotsDir) {
-			shotAtClick = `shots/click-${Date.now()}.png`;
-			await this.page.screenshot({ path: `${this.shotsDir}/${shotAtClick}` }).catch(() => (shotAtClick = null));
-		}
 		const tClick = this.now();
 		await this.page.mouse.down();
 		await this.page.waitForTimeout(70);
 		await this.page.mouse.up();
 		await this.settle(settleAfter);
 		this.onEvent({
-			kind: "click", selector: this.selStr(sel), elementText: text, bbox, pointer, tClick, shotAtClick,
+			kind: "click", selector: this.selStr(sel), elementText: text, bbox, pointer, tClick,
 			url: this.page.url(), scroll: { fromY, toY: await this.scrollY() }, tStart, tEnd: this.now(),
 		});
 	}

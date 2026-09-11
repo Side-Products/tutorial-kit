@@ -5,7 +5,7 @@ import { Screencast } from "./screencast.mjs";
 import { Driver } from "./driver.mjs";
 import { ensureAuth, storageStatePath } from "./auth.mjs";
 import { flowOutDir } from "../config.mjs";
-import { makeRun } from "../flow/actions.mjs";
+import { makeRun, locatorFor } from "../flow/actions.mjs";
 
 export async function recordFlow(flow, config, { headed = false } = {}) {
 	let healCtx = null;
@@ -37,6 +37,7 @@ export async function recordFlow(flow, config, { headed = false } = {}) {
 		baseUrl: config.baseUrl,
 		viewport: config.viewport,
 		onEvent: (a) => current?.actions.push(a),
+		shotsDir: capDir,
 	});
 
 	try {
@@ -74,6 +75,42 @@ export async function recordFlow(flow, config, { headed = false } = {}) {
 			current = null;
 			rec.tEnd = Date.now() / 1000;
 			rec.urlAfter = page.url();
+			// Guardrail: re-measure the first clicked/filled element now that the step settled.
+			// Docs draws the highlight on the after-shot; a bbox captured at click time goes stale
+			// when the page scrolls or re-renders (chat feeds, async grids). null = no box drawn,
+			// which beats a box floating over blank space.
+			const firstDecl = (step.actions || []).find((a) => (a.kind === "click" || a.kind === "fill") && a.target);
+			if (firstDecl) {
+				try {
+					const loc = locatorFor(driver, firstDecl.target);
+					// Visible is not enough: the locator can rebind to a different element with the
+					// same text after re-render (a page heading, a modal button). Require the text
+					// to still match AND the element to still sit near where it was clicked.
+					const want = (firstDecl.target.name || firstDecl.target.text || "").toLowerCase();
+					const txt = ((await loc.innerText().catch(() => "")) || "").toLowerCase();
+					const stillMatches = !want || txt.includes(want);
+					let box = (await loc.isVisible()) && stillMatches ? await loc.boundingBox() : null;
+					const clicked = (rec.actions || []).find((a) => a.kind === firstDecl.kind && a.bbox)?.bbox;
+					if (box && clicked && Math.hypot(box.x - clicked.x, box.y - clicked.y) > 200) box = null;
+					rec.bboxAfter = box;
+				} catch {
+					rec.bboxAfter = null;
+				}
+				// A modal/backdrop over the page means the clicked control is occluded; docs should
+				// show the click-moment frame instead of drawing on the dimmed after-state. Detect
+				// occlusion generically: is the element still the top-most thing at its own center?
+				if (rec.bboxAfter) {
+					try {
+						const loc = locatorFor(driver, firstDecl.target);
+						rec.dialogAfter = await loc.evaluate((el, c) => {
+							const top = document.elementFromPoint(c.x, c.y);
+							return !(top && (el === top || el.contains(top) || top.contains(el)));
+						}, { x: rec.bboxAfter.x + rec.bboxAfter.width / 2, y: rec.bboxAfter.y + rec.bboxAfter.height / 2 });
+					} catch {
+						rec.dialogAfter = false;
+					}
+				}
+			}
 			const shotAfter = `shots/${stepId}-after.png`;
 			await page.screenshot({ path: path.join(capDir, shotAfter), type: "png" }).catch(() => {});
 			rec.shotBefore = shotBefore;
