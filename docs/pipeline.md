@@ -79,8 +79,8 @@ for `final-4k-no-captions.mp4` and `final-1080p-no-captions.mp4`. These copies r
 cursor motion, and zooms, and leave the standard renders and caption timings intact.
 
 This option applies to the standalone `render` command. It does not change the cached `build` pipeline. The
-[Faceless workflow](faceless.md) explains how to add and edit captions in a hosted editor. Until the next npm
-release, use the source checkout for `--no-captions`.
+[Faceless workflow](faceless.md) explains how to add and edit captions in a hosted editor. The option is
+available in Tutorials Kit 0.1.5 and newer.
 
 ## Commands
 

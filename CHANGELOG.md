@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.5 (2026-09-11)
 
 - Add `render --no-captions` to export a separate narrated video for external caption editing while keeping
   the original render and WebVTT captions.

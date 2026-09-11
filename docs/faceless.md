@@ -10,17 +10,18 @@ captions locally and exports WebVTT. Faceless has its own account, service terms
 
 ## 1. Export a copy for caption editing
 
-Complete and review a normal Tutorials Kit build first. Then, from the Tutorials Kit source checkout, run:
+Complete and review a normal Tutorials Kit build first. Then, from your app project, run:
 
 ```bash
-node bin/tutorial-kit.js render getting-started \
+npx tutorials-kit render getting-started \
   --config /path/to/your-app/tutorials/tutorials.config.mjs \
   --no-captions
 ```
 
 Replace `getting-started` with your flow ID and the configuration path with your app's configuration. The
-`--no-captions` option is available on `master` and is planned for the next npm release; npm `0.1.4` does not
-include it yet. See the [source setup instructions](../README.md#1-install-from-source).
+`--no-captions` option requires Tutorials Kit **0.1.5 or newer**. From a
+[source checkout](../README.md#1-install-from-source), use `node bin/tutorial-kit.js` in place of
+`npx tutorials-kit`.
 
 The command writes `out/<flow-id>/render/proof-no-captions.mp4` beside your configuration. Add `--final` to
 produce both `final-4k-no-captions.mp4` and `final-1080p-no-captions.mp4`.

@@ -317,8 +317,7 @@ Narration currently uses your own ElevenLabs API key in both workflows.
 3. Render and review the result before choosing where to publish it.
 
 **[Follow the Faceless workflow →](docs/faceless.md)** It includes the export command, CLI instructions, and
-an optional prompt for your agent. The caption-free export is currently available from the source checkout; it
-is planned for the next npm release.
+an optional prompt for your agent. Exporting without captions requires Tutorials Kit **0.1.5 or newer**.
 
 Faceless is an optional hosted service with its own account and plan requirements. Tutorials Kit already
 includes local caption rendering and WebVTT export.
