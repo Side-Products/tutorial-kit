@@ -50,7 +50,7 @@ export default {
 			say: "Answers to common questions live at the bottom",
 			run: async (t) => {
 				const faq = t.page.getByText(/frequently asked/i).first();
-				if (await faq.isVisible().catch(() => false) || (await faq.count())) {
+				if ((await faq.isVisible().catch(() => false)) || (await faq.count())) {
 					await t.scrollIntoView(faq);
 					await t.pause(1.4);
 				} else {

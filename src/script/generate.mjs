@@ -9,16 +9,26 @@ const WORDS_PER_SEC = 2.6;
 
 function describeAction(a) {
 	switch (a.kind) {
-		case "goto": return `open ${new URL(a.url).pathname}`;
-		case "click": return `click "${a.elementText || a.selector}"`;
-		case "fill": return `type ${a.redact ? "(hidden value)" : `"${a.value}"`} into "${a.elementText || a.selector}"`;
-		case "press": return `press ${a.value}`;
-		case "hover": return `hover over "${a.elementText || a.selector}"`;
-		case "select": return `choose "${a.value}"`;
-		case "scroll": return `scroll ${a.value || "the page"}`;
-		case "waitLong": return `wait for ${a.value} (shown sped up)`;
-		case "pause": return null;
-		default: return a.value || a.kind;
+		case "goto":
+			return `open ${new URL(a.url).pathname}`;
+		case "click":
+			return `click "${a.elementText || a.selector}"`;
+		case "fill":
+			return `type ${a.redact ? "(hidden value)" : `"${a.value}"`} into "${a.elementText || a.selector}"`;
+		case "press":
+			return `press ${a.value}`;
+		case "hover":
+			return `hover over "${a.elementText || a.selector}"`;
+		case "select":
+			return `choose "${a.value}"`;
+		case "scroll":
+			return `scroll ${a.value || "the page"}`;
+		case "waitLong":
+			return `wait for ${a.value} (shown sped up)`;
+		case "pause":
+			return null;
+		default:
+			return a.value || a.kind;
 	}
 }
 
@@ -29,9 +39,11 @@ export function eventsDigest(events) {
 		url: s.urlAfter,
 		actions: s.actions.map((a) => [a.kind, a.elementText || "", a.redact ? "" : a.value || ""]),
 	}));
-	return crypto.createHash("sha256")
+	return crypto
+		.createHash("sha256")
 		.update(JSON.stringify({ title: events.meta.title, goal: events.meta.goal, skeleton }))
-		.digest("hex").slice(0, 16);
+		.digest("hex")
+		.slice(0, 16);
 }
 
 function buildPrompt(events, config) {
@@ -42,7 +54,13 @@ function buildPrompt(events, config) {
 		const secs = Math.min(12, Math.max(2.5, (s.tEnd - s.tStart) * 0.8));
 		const budget = Math.max(8, Math.round(secs * WORDS_PER_SEC));
 		const acts = s.actions.map(describeAction).filter(Boolean);
-		return { id: s.stepId, hint: s.sayHint, page: new URL(s.urlAfter).pathname, actions: acts, wordBudget: budget };
+		return {
+			id: s.stepId,
+			hint: s.sayHint,
+			page: new URL(s.urlAfter).pathname,
+			actions: acts,
+			wordBudget: budget,
+		};
 	});
 	const system = `You write voiceover narration for short product tutorial videos. Rules:
 - Second person, present tense. Imperative for actions ("Pick a niche", "Hit Generate").
@@ -88,7 +106,8 @@ export async function generateScript(flow, config) {
 		}
 		feedback = `\n\nYour previous attempt had problems. Banned phrasing matched: ${bad.join("; ") || "none"}. Missing step ids: ${missing.map((s) => s.stepId).join(", ") || "none"}. Rewrite and fix.`;
 	}
-	if (!result) throw new Error("script generation failed copy rules twice; adjust prompt or write script.md by hand");
+	if (!result)
+		throw new Error("script generation failed copy rules twice; adjust prompt or write script.md by hand");
 
 	const lines = [
 		"---",

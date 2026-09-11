@@ -3,6 +3,9 @@ import path from "node:path";
 import { flowOutDir } from "../config.mjs";
 import { parseScriptMd } from "../script/generate.mjs";
 import { annotateShot } from "./annotate.mjs";
+import { assertIdentifier, pathInside } from "../security/paths.mjs";
+import { publicUrl } from "../security/urls.mjs";
+import { escapeHtml, markdownText, inlineCode } from "./escape.mjs";
 
 const FPS = 30;
 
@@ -36,15 +39,24 @@ function paginate(words) {
 
 function actionLine(a) {
 	switch (a.kind) {
-		case "goto": return `Go to \`${new URL(a.url).pathname}\``;
-		case "click": return `Click **${a.elementText || a.selector}**`;
-		case "fill": return `Enter ${a.redact ? "your value" : `\`${a.value}\``} in **${a.elementText || a.selector}**`;
-		case "press": return `Press \`${a.value}\``;
-		case "hover": return `Hover over **${a.elementText || a.selector}**`;
-		case "select": return `Select **${a.value}**`;
-		case "scroll": return a.value ? `Scroll to ${a.value}` : "Scroll down";
-		case "waitLong": return `Wait for ${a.value}`;
-		default: return null;
+		case "goto":
+			return `Go to ${inlineCode(new URL(a.url).pathname)}`;
+		case "click":
+			return `Click **${markdownText(a.elementText || a.selector)}**`;
+		case "fill":
+			return `Enter ${a.redact ? "your value" : inlineCode(a.value)} in **${markdownText(a.elementText || a.selector)}**`;
+		case "press":
+			return `Press ${inlineCode(a.value)}`;
+		case "hover":
+			return `Hover over **${markdownText(a.elementText || a.selector)}**`;
+		case "select":
+			return `Select **${markdownText(a.value)}**`;
+		case "scroll":
+			return a.value ? `Scroll to ${markdownText(a.value)}` : "Scroll down";
+		case "waitLong":
+			return `Wait for ${markdownText(a.value)}`;
+		default:
+			return null;
 	}
 }
 
@@ -64,16 +76,17 @@ export async function buildDocs(flow, config) {
 		try {
 			const u = new URL(url);
 			u.host = events.meta.canonicalHost;
-			return u.href;
+			return publicUrl(u.href);
 		} catch {
-			return url;
+			return publicUrl(url);
 		}
 	};
 
 	// guide.md
-	const md = [`# ${events.meta.title}`, "", narrationOf("intro"), ""];
+	const md = [`# ${markdownText(events.meta.title)}`, "", markdownText(narrationOf("intro")), ""];
 	const jsonSteps = [];
 	for (const [i, s] of events.steps.entries()) {
+		assertIdentifier(s.stepId, "recorded step id");
 		const tStep = timeline.steps.find((x) => x.stepId === s.stepId);
 		const firstTarget = s.actions.find((a) => (a.kind === "click" || a.kind === "fill") && a.bbox);
 		// Every step shows its RESULT (the after shot). If the recorder re-verified the clicked
@@ -86,20 +99,20 @@ export async function buildDocs(flow, config) {
 		const useClickFrame = firstTarget && ((navigated && !s.bboxAfter) || s.dialogAfter);
 		const shotName = `${s.stepId}.jpg`;
 		await annotateShot({
-			shotPath: path.join(capDir, useClickFrame ? firstTarget?.shotAtClick || s.shotBefore : s.shotAfter),
+			shotPath: pathInside(capDir, useClickFrame ? firstTarget?.shotAtClick || s.shotBefore : s.shotAfter),
 			bbox: useClickFrame ? firstTarget?.bbox || null : s.bboxAfter || null,
 			dsf,
 			accent,
-			outPath: path.join(shotsOut, shotName),
+			outPath: pathInside(shotsOut, shotName),
 		});
 		const lines = s.actions.map(actionLine).filter(Boolean);
-		md.push(`## ${i + 1}. ${tStep?.title || s.stepId}`, "");
+		md.push(`## ${i + 1}. ${markdownText(tStep?.title || s.stepId)}`, "");
 		if (lines.length) md.push(...lines.map((l) => `- ${l}`), "");
 		const narration = narrationOf(`step:${s.stepId}`);
-		if (narration) md.push(narration, "");
-		md.push(`![${tStep?.title || s.stepId}](shots/${shotName})`, "");
+		if (narration) md.push(markdownText(narration), "");
+		md.push(`![${markdownText(tStep?.title || s.stepId)}](shots/${shotName})`, "");
 		if (s.urlAfter !== s.urlBefore && !s.urlBefore.startsWith("about:")) {
-			md.push(`You end up on \`${new URL(canonical(s.urlAfter)).pathname}\`.`, "");
+			md.push(`You end up on ${inlineCode(new URL(canonical(s.urlAfter)).pathname)}.`, "");
 		}
 		jsonSteps.push({
 			index: i + 1,
@@ -112,7 +125,7 @@ export async function buildDocs(flow, config) {
 					kind: a.kind,
 					selector: a.selector || null,
 					elementText: a.elementText || null,
-					value: a.redact ? "<redacted>" : a.value ?? null,
+					value: a.redact ? "<redacted>" : (a.value ?? null),
 					url: a.url ? canonical(a.url) : null,
 				})),
 			screenshot: `docs/shots/${shotName}`,
@@ -120,7 +133,7 @@ export async function buildDocs(flow, config) {
 		});
 	}
 	const outroText = narrationOf("outro");
-	if (outroText) md.push(`## Wrap up`, "", outroText, "");
+	if (outroText) md.push(`## Wrap up`, "", markdownText(outroText), "");
 	fs.writeFileSync(path.join(docsDir, "guide.md"), md.join("\n"));
 
 	// tutorial.json (agent-executable)
@@ -134,10 +147,15 @@ export async function buildDocs(flow, config) {
 		sourceFlowHash: events.meta.flowHash,
 		durationSec: Number((timeline.meta.durationInFrames / FPS).toFixed(1)),
 		video: {
-			file: "render/final-1080p.mp4",
-			width: timeline.meta.width,
-			height: timeline.meta.height,
-			chapters: timeline.chapters.map((c) => ({ title: c.title, startSec: Number((c.startFrame / FPS).toFixed(1)) })),
+			file: fs.existsSync(path.join(outDir, "render", "final-1080p.mp4"))
+				? "render/final-1080p.mp4"
+				: "render/proof.mp4",
+			width: 1920,
+			height: 1080,
+			chapters: timeline.chapters.map((c) => ({
+				title: c.title,
+				startSec: Number((c.startFrame / FPS).toFixed(1)),
+			})),
 		},
 		captionsFile: "docs/captions.vtt",
 		steps: jsonSteps,
@@ -145,11 +163,15 @@ export async function buildDocs(flow, config) {
 	fs.writeFileSync(path.join(docsDir, "tutorial.json"), JSON.stringify(tutorial, null, 1));
 
 	// captions.vtt
-	const allWords = [...(timeline.intro.words || []), ...timeline.steps.flatMap((s) => s.words || []), ...(timeline.outro.words || [])];
+	const allWords = [
+		...(timeline.intro.words || []),
+		...timeline.steps.flatMap((s) => s.words || []),
+		...(timeline.outro.words || []),
+	];
 	const vtt = ["WEBVTT", ""];
 	for (const p of paginate(allWords)) {
 		vtt.push(`${tc(p.start)} --> ${tc(p.end + 6)}`);
-		vtt.push(p.words.map((w) => w.text).join(" "));
+		vtt.push(p.words.map((w) => escapeHtml(w.text).replace(/[\r\n]/g, " ")).join(" "));
 		vtt.push("");
 	}
 	fs.writeFileSync(path.join(docsDir, "captions.vtt"), vtt.join("\n"));
@@ -157,28 +179,30 @@ export async function buildDocs(flow, config) {
 	// chapters.txt (YouTube format)
 	fs.writeFileSync(
 		path.join(docsDir, "chapters.txt"),
-		timeline.chapters.map((c) => `${chapterTs(c.startFrame)} ${c.title}`).join("\n") + "\n"
+		timeline.chapters.map((c) => `${chapterTs(c.startFrame)} ${c.title}`).join("\n") + "\n",
 	);
 
 	// publish-snippets.md
 	const snippets = `# Publish snippets for ${flow.id}
 
-## faceless /tutorials page (src/components/Project/Tutorials.jsx, TUTORIALS array)
+## Video library entry
 
 \`\`\`js
-{ title: "${events.meta.title}", tags: [], url: "<uploaded video url>" },
+${JSON.stringify({ title: events.meta.title, tags: [], url: "<uploaded video URL>" }, null, 2)}
 \`\`\`
 
 ## Written guide (docs site + llms.txt)
 
 1. Copy \`docs/guide.md\` to the product repo (e.g. \`docs/tutorials/${flow.id}.md\`).
-2. Register it in \`src/lib/devDocs.js\` (a TUTORIALS list mirroring DEV_GUIDES).
-3. Run \`npm run generate:agents\` and commit the regenerated llms.txt artifacts.
+2. Copy the screenshot directory alongside it and check the image links.
+3. Add the guide to your site's navigation and, if used, its llms.txt index.
 
 ## Agent artifact
 
 \`docs/tutorial.json\` is machine-readable (schema tutorial/v1): goal, ordered steps with selectors
-and urls, expected outcomes, video chapters. Serve it next to the guide for AI agents.
+and URLs, expected outcomes, video chapters. Serve it next to the guide for AI agents.
+Review all artifacts for private data before publishing. Query parameters and URL fragments
+are omitted; add any required non-sensitive routing information after review.
 `;
 	fs.writeFileSync(path.join(docsDir, "publish-snippets.md"), snippets);
 	console.log(`docs: ${docsDir} (guide.md, tutorial.json, captions.vtt, chapters.txt, publish-snippets.md)`);

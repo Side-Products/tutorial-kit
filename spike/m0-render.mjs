@@ -4,7 +4,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
+import { FFMPEG_PATH, concatFileLine } from "../src/media/encode.mjs";
 
 const execFileP = promisify(execFile);
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -38,10 +38,27 @@ await renderMedia({
 	jpegQuality: 95,
 	offthreadVideoCacheSizeInBytes: 512 * 1024 * 1024,
 });
-console.log(`rendered in ${((Date.now() - t0) / 1000).toFixed(0)}s -> ${outPath} (${(fs.statSync(outPath).size / 1e6).toFixed(1)}MB)`);
+console.log(
+	`rendered in ${((Date.now() - t0) / 1000).toFixed(0)}s -> ${outPath} (${(fs.statSync(outPath).size / 1e6).toFixed(1)}MB)`,
+);
 
 // Extract a frame and crop for crispness inspection.
-await execFileP(ffmpegInstaller.path, ["-hide_banner", "-loglevel", "error", "-y", "-ss", "1", "-i", outPath, "-frames:v", "1", path.join(OUT, "render-frame.png")]);
+await execFileP(FFMPEG_PATH, [
+	"-hide_banner",
+	"-loglevel",
+	"error",
+	"-y",
+	"-ss",
+	"1",
+	"-i",
+	outPath,
+	"-frames:v",
+	"1",
+	path.join(OUT, "render-frame.png"),
+]);
 const sharp = (await import("sharp")).default;
-await sharp(path.join(OUT, "render-frame.png")).extract({ left: 1000, top: 400, width: 1200, height: 675 }).png().toFile(path.join(OUT, "render-crop-1to1.png"));
+await sharp(path.join(OUT, "render-frame.png"))
+	.extract({ left: 1000, top: 400, width: 1200, height: 675 })
+	.png()
+	.toFile(path.join(OUT, "render-crop-1to1.png"));
 console.log("wrote render-crop-1to1.png");

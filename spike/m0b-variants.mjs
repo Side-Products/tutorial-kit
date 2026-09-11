@@ -16,7 +16,13 @@ async function screencastDims(page, context, label) {
 			dims = `${meta.width}x${meta.height}`;
 		}
 	});
-	await cdp.send("Page.startScreencast", { format: "jpeg", quality: 90, maxWidth: 3840, maxHeight: 2160, everyNthFrame: 1 });
+	await cdp.send("Page.startScreencast", {
+		format: "jpeg",
+		quality: 90,
+		maxWidth: 3840,
+		maxHeight: 2160,
+		everyNthFrame: 1,
+	});
 	// generate damage
 	await page.mouse.wheel(0, 200);
 	await page.waitForTimeout(400);
@@ -68,7 +74,11 @@ async function variantC() {
 	await browser.close();
 }
 
-for (const [name, fn] of [["A", variantA], ["B", variantB], ["C", variantC]]) {
+for (const [name, fn] of [
+	["A", variantA],
+	["B", variantB],
+	["C", variantC],
+]) {
 	try {
 		await fn();
 	} catch (e) {

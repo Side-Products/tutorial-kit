@@ -1,0 +1,17 @@
+name: Feature request
+description: Propose an improvement to the tutorial workflow.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the workflow and who would benefit.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include an example and alternatives you considered.
+    validations:
+      required: true

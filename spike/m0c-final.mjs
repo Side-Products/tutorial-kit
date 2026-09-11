@@ -15,7 +15,10 @@ const context = await browser.newContext({ viewport: null });
 const page = await context.newPage();
 await page.goto(URL, { waitUntil: "domcontentloaded", timeout: 60000 });
 await page.waitForTimeout(2500);
-console.log("css viewport:", await page.evaluate(() => `${innerWidth}x${innerHeight} dpr=${devicePixelRatio}`));
+console.log(
+	"css viewport:",
+	await page.evaluate(() => `${innerWidth}x${innerHeight} dpr=${devicePixelRatio}`),
+);
 
 const cdp = await context.newCDPSession(page);
 let saved = null;
@@ -25,7 +28,13 @@ cdp.on("Page.screencastFrame", (params) => {
 	cdp.send("Page.screencastFrameAck", { sessionId: params.sessionId }).catch(() => {});
 	if (!saved) saved = Buffer.from(params.data, "base64");
 });
-await cdp.send("Page.startScreencast", { format: "jpeg", quality: 90, maxWidth: 3840, maxHeight: 2160, everyNthFrame: 1 });
+await cdp.send("Page.startScreencast", {
+	format: "jpeg",
+	quality: 90,
+	maxWidth: 3840,
+	maxHeight: 2160,
+	everyNthFrame: 1,
+});
 await page.mouse.wheel(0, 300);
 await page.waitForTimeout(500);
 await page.mouse.wheel(0, -300);
@@ -34,7 +43,10 @@ await cdp.send("Page.stopScreencast").catch(() => {});
 
 const meta = await sharp(saved).metadata();
 console.log(`screencast: ${meta.width}x${meta.height} (${count} frames)`);
-await sharp(saved).extract({ left: 1200, top: 300, width: 1200, height: 675 }).png().toFile(path.join(OUT, "m0c-crop-1to1.png"));
+await sharp(saved)
+	.extract({ left: 1200, top: 300, width: 1200, height: 675 })
+	.png()
+	.toFile(path.join(OUT, "m0c-crop-1to1.png"));
 await sharp(saved).resize(1200).png().toFile(path.join(OUT, "m0c-overview.png"));
 console.log("crops written");
 await browser.close();

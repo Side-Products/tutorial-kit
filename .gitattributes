@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.mjs text diff
+*.jsx text
+*.png binary
+*.jpg binary
+*.mp4 binary
+*.mp3 binary

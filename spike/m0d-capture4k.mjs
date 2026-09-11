@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import sharp from "sharp";
-import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
+import { FFMPEG_PATH, concatFileLine } from "../src/media/encode.mjs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
@@ -39,7 +39,13 @@ cdp.on("Page.screencastFrame", (params) => {
 });
 
 // everyNthFrame 2: compositor runs 60fps under animation, output is 30fps anyway.
-await cdp.send("Page.startScreencast", { format: "jpeg", quality: 90, maxWidth: 3840, maxHeight: 2160, everyNthFrame: 2 });
+await cdp.send("Page.startScreencast", {
+	format: "jpeg",
+	quality: 90,
+	maxWidth: 3840,
+	maxHeight: 2160,
+	everyNthFrame: 2,
+});
 
 const marks = [];
 const mark = (label) => marks.push({ label, t: Date.now() / 1000 });
@@ -63,7 +69,10 @@ await page.addStyleTag({ content: "* { cursor: none !important }" }).catch(() =>
 await page.waitForTimeout(2500);
 
 // Click alignment: click something guaranteed to change pixels. Use the first visible CTA.
-const target = page.locator("a:visible, button:visible").filter({ hasText: /get started|start|pricing|sign|try/i }).first();
+const target = page
+	.locator("a:visible, button:visible")
+	.filter({ hasText: /get started|start|pricing|sign|try/i })
+	.first();
 let clicked = false;
 if (await target.count()) {
 	const box = await target.boundingBox().catch(() => null);
@@ -114,27 +123,53 @@ for (const f of around) {
 }
 
 console.log("=== M0d 4K CAPTURE ===");
-console.log(`frames: ${frames.length} over ${total.toFixed(1)}s (avg ${(frames.length / total).toFixed(1)} fps)`);
+console.log(
+	`frames: ${frames.length} over ${total.toFixed(1)}s (avg ${(frames.length / total).toFixed(1)} fps)`,
+);
 console.log(`frame size: ${first.width}x${first.height}`);
 console.log(`scroll fps: ${scrollFps.toFixed(1)} (gate >= 15)`);
 console.log(`click-to-frame latency: ${alignMs === null ? "no diff spike found" : alignMs + "ms"}`);
-console.log(`disk: ${(bytes / 1e6).toFixed(0)}MB, ${(bytes / frames.length / 1024).toFixed(0)}KB/frame, ${(bytes / 1e6 / total).toFixed(1)}MB/s`);
+console.log(
+	`disk: ${(bytes / 1e6).toFixed(0)}MB, ${(bytes / frames.length / 1024).toFixed(0)}KB/frame, ${(bytes / 1e6 / total).toFixed(1)}MB/s`,
+);
 
 const concat = ["ffconcat version 1.0"];
 for (let i = 0; i < frames.length; i++) {
 	const d = i < frames.length - 1 ? Math.max(frames[i + 1].t - frames[i].t, 1 / 120) : 1 / 30;
-	concat.push(`file '${frames[i].file}'`);
+	concat.push(concatFileLine(frames[i].file));
 	concat.push(`duration ${d.toFixed(6)}`);
 }
-concat.push(`file '${frames[frames.length - 1].file}'`);
+concat.push(concatFileLine(frames[frames.length - 1].file));
 fs.writeFileSync(path.join(OUT, "frames.ffconcat"), concat.join("\n"));
 
 const t0 = Date.now();
 await execFileP(
-	ffmpegInstaller.path,
-	["-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", path.join(OUT, "frames.ffconcat"),
-		"-vf", "fps=30,format=yuv420p", "-c:v", "libx264", "-preset", "faster", "-crf", "12",
-		"-x264-params", "keyint=30", path.join(OUT, "mezzanine.mp4")],
-	{ timeout: 600000, maxBuffer: 1024 * 1024 * 64 }
+	FFMPEG_PATH,
+	[
+		"-hide_banner",
+		"-loglevel",
+		"error",
+		"-y",
+		"-f",
+		"concat",
+		"-safe",
+		"0",
+		"-i",
+		path.join(OUT, "frames.ffconcat"),
+		"-vf",
+		"fps=30,format=yuv420p",
+		"-c:v",
+		"libx264",
+		"-preset",
+		"faster",
+		"-crf",
+		"12",
+		"-x264-params",
+		"keyint=30",
+		path.join(OUT, "mezzanine.mp4"),
+	],
+	{ timeout: 600000, maxBuffer: 1024 * 1024 * 64 },
 );
-console.log(`mezzanine: ${(fs.statSync(path.join(OUT, "mezzanine.mp4")).size / 1e6).toFixed(0)}MB in ${((Date.now() - t0) / 1000).toFixed(0)}s`);
+console.log(
+	`mezzanine: ${(fs.statSync(path.join(OUT, "mezzanine.mp4")).size / 1e6).toFixed(0)}MB in ${((Date.now() - t0) / 1000).toFixed(0)}s`,
+);

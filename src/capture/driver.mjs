@@ -3,6 +3,8 @@
 // the target bbox AFTER scrolling (bboxes go stale on scroll), and logs everything the
 // composition and docs stages need: selector, element text, bbox, pointer waypoints, urls, times.
 
+import { publicUrl } from "../security/urls.mjs";
+
 const easeInOutCubic = (u) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
 
 export class Driver {
@@ -11,7 +13,7 @@ export class Driver {
 		this.page = page;
 		this.baseUrl = baseUrl.replace(/\/$/, "");
 		this.viewport = viewport;
-		this.onEvent = onEvent || (() => {});
+		this.onEvent = (event) => onEvent?.({ ...event, ...(event.url ? { url: publicUrl(event.url) } : {}) });
 		this.pacing = pacing;
 		this.cursor = { x: viewport.width / 2, y: viewport.height * 0.4 };
 	}
@@ -27,7 +29,9 @@ export class Driver {
 	selStr(sel) {
 		if (typeof sel === "string") return sel;
 		// Playwright locators stringify as: locator('...').first() etc.
-		return String(sel).replace(/^locator\(/, "").replace(/\)$/, "");
+		return String(sel)
+			.replace(/^locator\(/, "")
+			.replace(/\)$/, "");
 	}
 
 	async settle(ms) {
@@ -62,7 +66,7 @@ export class Driver {
 					requestAnimationFrame(tick);
 				});
 			},
-			{ toY, durMs }
+			{ toY, durMs },
 		);
 	}
 
@@ -103,17 +107,27 @@ export class Driver {
 					const delta = r.top + r.height / 2 - want;
 					if (Math.abs(delta) < 4) return false;
 					const durMs = Math.min(2200, Math.max(650, Math.abs(delta) * 1.0 + 400));
-					await animate(() => container.scrollTop, (y) => (container.scrollTop = y), delta, durMs);
+					await animate(
+						() => container.scrollTop,
+						(y) => (container.scrollTop = y),
+						delta,
+						durMs,
+					);
 					return true;
 				}
 				const want = window.innerHeight * bandCenter;
 				const delta = r.top + r.height / 2 - want;
 				if (Math.abs(delta) < 4) return false;
 				const durMs = Math.min(2200, Math.max(650, Math.abs(delta) * 1.0 + 400));
-				await animate(() => window.scrollY, (y) => window.scrollTo(0, y), delta, durMs);
+				await animate(
+					() => window.scrollY,
+					(y) => window.scrollTo(0, y),
+					delta,
+					durMs,
+				);
 				return true;
 			},
-			{ el: handle, bandCenter: 0.42 }
+			{ el: handle, bandCenter: 0.42 },
 		);
 		await handle.dispose();
 		await this.page.waitForTimeout(140);
@@ -200,11 +214,22 @@ export class Driver {
 				() => {
 					const visible = (el) => {
 						const r = el.getBoundingClientRect();
-						return r.width > 24 && r.height > 24 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+						return (
+							r.width > 24 &&
+							r.height > 24 &&
+							r.bottom > 0 &&
+							r.top < innerHeight &&
+							r.right > 0 &&
+							r.left < innerWidth
+						);
 					};
 					// Loading skeletons: aria-busy is the standard marker; the pulse class and the
 					// app's data-* hook cover the rest.
-					const skeletons = [...document.querySelectorAll('[aria-busy="true"], .animate-pulse, [data-home-skeleton], [data-skeleton]')];
+					const skeletons = [
+						...document.querySelectorAll(
+							'[aria-busy="true"], .animate-pulse, [data-home-skeleton], [data-skeleton]',
+						),
+					];
 					if (skeletons.some(visible)) return false;
 					const imgs = [...document.querySelectorAll("img")].filter(visible);
 					if (imgs.some((i) => i.getAttribute("src") && !(i.complete && i.naturalWidth > 0))) return false;
@@ -213,7 +238,7 @@ export class Driver {
 					return true;
 				},
 				undefined,
-				{ timeout }
+				{ timeout },
 			)
 			.catch(() => {});
 	}
@@ -249,7 +274,9 @@ export class Driver {
 		let shotAtClick = null;
 		if (this.shotsDir) {
 			shotAtClick = `shots/click-${Date.now()}.png`;
-			await this.page.screenshot({ path: `${this.shotsDir}/${shotAtClick}` }).catch(() => (shotAtClick = null));
+			await this.page
+				.screenshot({ path: `${this.shotsDir}/${shotAtClick}` })
+				.catch(() => (shotAtClick = null));
 		}
 		const tClick = this.now();
 		await this.page.mouse.down();
@@ -257,14 +284,24 @@ export class Driver {
 		await this.page.mouse.up();
 		await this.settle(settleAfter);
 		this.onEvent({
-			kind: "click", selector: this.selStr(sel), elementText: text, bbox, pointer, tClick, shotAtClick,
-			url: this.page.url(), scroll: { fromY, toY: await this.scrollY() }, tStart, tEnd: this.now(),
+			kind: "click",
+			selector: this.selStr(sel),
+			elementText: text,
+			bbox,
+			pointer,
+			tClick,
+			shotAtClick,
+			url: this.page.url(),
+			scroll: { fromY, toY: await this.scrollY() },
+			tStart,
+			tEnd: this.now(),
 		});
 	}
 
 	async fill(sel, value, { redact = false, settleAfter = 400 } = {}) {
 		const tStart = this.now();
 		const locator = this.loc(sel);
+		redact = redact || (await locator.getAttribute("type"))?.toLowerCase() === "password";
 		const fromY = await this.scrollY();
 		await this.scrollIntoView(locator);
 		await this.settle(250);
@@ -278,12 +315,26 @@ export class Driver {
 		await this.page.mouse.up();
 		await this.settle(220);
 		const delay = Math.min(48, Math.max(14, Math.round(2600 / Math.max(value.length, 1))));
-		await locator.pressSequentially(value, { delay });
+		try {
+			await locator.pressSequentially(value, { delay });
+		} catch (error) {
+			if (redact) throw new Error("redacted fill failed; inspect the target in a local browser session");
+			throw error;
+		}
 		await this.settle(settleAfter);
 		this.onEvent({
-			kind: "fill", selector: this.selStr(sel), elementText: text, bbox, pointer, tClick,
-			value: redact ? "•".repeat(8) : value, redact,
-			url: this.page.url(), scroll: { fromY, toY: await this.scrollY() }, tStart, tEnd: this.now(),
+			kind: "fill",
+			selector: this.selStr(sel),
+			elementText: text,
+			bbox,
+			pointer,
+			tClick,
+			value: redact ? "•".repeat(8) : value,
+			redact,
+			url: this.page.url(),
+			scroll: { fromY, toY: await this.scrollY() },
+			tStart,
+			tEnd: this.now(),
 		});
 	}
 
@@ -298,6 +349,8 @@ export class Driver {
 		const tStart = this.now();
 		const locator = this.loc(sel);
 		await this.scrollIntoView(locator);
+		// Scrolling reveals lazy-loaded card previews; let them finish before the camera lingers.
+		await this.waitForStable({ timeout: 5000 });
 		await this.settle(200);
 		const bbox = await locator.boundingBox();
 		if (!bbox) throw new Error(`hover: target has no bbox: ${this.selStr(sel)}`);
@@ -305,8 +358,14 @@ export class Driver {
 		const pointer = await this.movePointer(bbox.x + bbox.width / 2, bbox.y + bbox.height / 2);
 		await this.settle(holdMs);
 		this.onEvent({
-			kind: "hover", selector: this.selStr(sel), elementText: text, bbox, pointer,
-			url: this.page.url(), tStart, tEnd: this.now(),
+			kind: "hover",
+			selector: this.selStr(sel),
+			elementText: text,
+			bbox,
+			pointer,
+			url: this.page.url(),
+			tStart,
+			tEnd: this.now(),
 		});
 	}
 
@@ -319,8 +378,14 @@ export class Driver {
 		await locator.selectOption(value);
 		await this.settle(settleAfter);
 		this.onEvent({
-			kind: "select", selector: this.selStr(sel), bbox, pointer, value: String(value),
-			url: this.page.url(), tStart, tEnd: this.now(),
+			kind: "select",
+			selector: this.selStr(sel),
+			bbox,
+			pointer,
+			value: String(value),
+			url: this.page.url(),
+			tStart,
+			tEnd: this.now(),
 		});
 	}
 
@@ -328,13 +393,19 @@ export class Driver {
 	async scrollBy(px, { label = "", duration } = {}) {
 		const tStart = this.now();
 		const fromY = await this.scrollY();
-		const maxY = await this.page.evaluate(() => Math.max(0, document.documentElement.scrollHeight - innerHeight));
+		const maxY = await this.page.evaluate(() =>
+			Math.max(0, document.documentElement.scrollHeight - innerHeight),
+		);
 		const toY = Math.max(0, Math.min(maxY, fromY + px));
 		await this.animateScroll(toY, { duration });
 		await this.settle(450);
 		this.onEvent({
-			kind: "scroll", value: label, scroll: { fromY, toY: await this.scrollY() },
-			url: this.page.url(), tStart, tEnd: this.now(),
+			kind: "scroll",
+			value: label,
+			scroll: { fromY, toY: await this.scrollY() },
+			url: this.page.url(),
+			tStart,
+			tEnd: this.now(),
 		});
 	}
 
@@ -343,14 +414,28 @@ export class Driver {
 		const locator = this.loc(sel);
 		await locator.waitFor({ state: "visible", timeout });
 		const bbox = await locator.boundingBox().catch(() => null);
-		this.onEvent({ kind: "waitFor", selector: this.selStr(sel), bbox, url: this.page.url(), tStart, tEnd: this.now() });
+		this.onEvent({
+			kind: "waitFor",
+			selector: this.selStr(sel),
+			bbox,
+			url: this.page.url(),
+			tStart,
+			tEnd: this.now(),
+		});
 	}
 
 	// A long in-product wait (render progress etc). The solver timelapses this window.
 	async waitLong(sel, { label = "waiting", timeout = 300000 } = {}) {
 		const tStart = this.now();
 		if (sel) await this.loc(sel).waitFor({ state: "visible", timeout });
-		this.onEvent({ kind: "waitLong", selector: sel ? this.selStr(sel) : null, value: label, url: this.page.url(), tStart, tEnd: this.now() });
+		this.onEvent({
+			kind: "waitLong",
+			selector: sel ? this.selStr(sel) : null,
+			value: label,
+			url: this.page.url(),
+			tStart,
+			tEnd: this.now(),
+		});
 	}
 
 	// Deliberate hold the solver must NOT compress (let the viewer read the screen).

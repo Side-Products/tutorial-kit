@@ -55,13 +55,13 @@ export async function synthesizeBlock({ text, voice, previousText, nextText }) {
 	if (previousText && SUPPORTS_CONTEXT(model)) body.previous_text = previousText;
 	if (nextText && SUPPORTS_CONTEXT(model)) body.next_text = nextText;
 	const res = await elevenLabsFetch(
-		`https://api.elevenlabs.io/v1/text-to-speech/${voice.id}/with-timestamps?output_format=mp3_44100_128`,
+		`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice.id)}/with-timestamps?output_format=mp3_44100_128`,
 		{
 			method: "POST",
 			headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY, "content-type": "application/json" },
 			body: JSON.stringify(body),
 		},
-		{ label: `tts:${voice.id.slice(0, 6)}` }
+		{ label: `tts:${voice.id.slice(0, 6)}` },
 	);
 	const data = await res.json();
 	const mp3 = Buffer.from(data.audio_base64, "base64");
@@ -84,13 +84,23 @@ export async function runVoice(flow, config) {
 
 	const wordsPath = path.join(voiceDir, "words.json");
 	const prev = fs.existsSync(wordsPath) ? JSON.parse(fs.readFileSync(wordsPath)).blocks || [] : [];
-	const voiceKey = JSON.stringify({ id: voice.id, model: voice.model, settings: voice.settings, speed: voice.speed, pron: config.voice.pronunciations || null });
+	const voiceKey = JSON.stringify({
+		id: voice.id,
+		model: voice.model,
+		settings: voice.settings,
+		speed: voice.speed,
+		pron: config.voice.pronunciations || null,
+	});
 
 	const results = [];
 	for (let i = 0; i < blocks.length; i++) {
 		const b = blocks[i];
 		const spokenText = applyPronunciations(b.text, config.voice.pronunciations);
-		const textHash = crypto.createHash("sha256").update(spokenText + voiceKey).digest("hex").slice(0, 16);
+		const textHash = crypto
+			.createHash("sha256")
+			.update(spokenText + voiceKey)
+			.digest("hex")
+			.slice(0, 16);
 		const audioFile = `blocks/${b.blockId.replace(":", "-")}.mp3`;
 		const audioAbs = path.join(voiceDir, audioFile);
 		const cached = prev.find((p) => p.blockId === b.blockId && p.textHash === textHash);
@@ -110,7 +120,10 @@ export async function runVoice(flow, config) {
 		results.push({ blockId: b.blockId, text: b.text, textHash, audioFile, durationSec, words });
 		console.log(`voice ${b.blockId}: ${durationSec.toFixed(1)}s, ${words.length} words`);
 	}
-	fs.writeFileSync(wordsPath, JSON.stringify({ voice: { id: voice.id, model: voice.model }, blocks: results }, null, 1));
+	fs.writeFileSync(
+		wordsPath,
+		JSON.stringify({ voice: { id: voice.id, model: voice.model }, blocks: results }, null, 1),
+	);
 	console.log(`voice: ${wordsPath}`);
 	return wordsPath;
 }

@@ -1,0 +1,20 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      remotion:
+        patterns:
+          - "remotion"
+          - "@remotion/*"
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { run, probeDuration } from "./encode.mjs";
+import { run, probeDuration, concatFileLine } from "./encode.mjs";
+import { assertIdentifier, pathInside } from "../security/paths.mjs";
 
 // Narration placement doctrine (vendored from faceless longform/voice.js): decode every block to
 // uniform PCM, size explicit silence between them, and concat: the concat file IS the clock.
@@ -18,24 +19,76 @@ export async function buildNarrationTrack({ voiceDir, blocks, placements, totalS
 		const gap = p.startSec - clock;
 		if (gap > 0.005) {
 			const sil = path.join(workDir, `sil-${i}.wav`);
-			await run(["-y", "-f", "lavfi", "-i", `anullsrc=r=44100:cl=mono`, "-t", gap.toFixed(3), "-c:a", "pcm_s16le", sil]);
+			await run([
+				"-y",
+				"-f",
+				"lavfi",
+				"-i",
+				`anullsrc=r=44100:cl=mono`,
+				"-t",
+				gap.toFixed(3),
+				"-c:a",
+				"pcm_s16le",
+				sil,
+			]);
 			entries.push(sil);
 			clock += gap;
 		}
-		const wav = path.join(workDir, `${block.blockId.replace(":", "-")}.wav`);
-		await run(["-y", "-i", path.join(voiceDir, block.audioFile), "-ar", "44100", "-ac", "1", "-c:a", "pcm_s16le", wav]);
+		if (block.blockId.startsWith("step:")) assertIdentifier(block.blockId.slice(5), "audio step id");
+		else if (!["intro", "outro"].includes(block.blockId)) throw new Error("invalid audio block id");
+		const wav = pathInside(workDir, `${block.blockId.replace(":", "-")}.wav`);
+		await run([
+			"-y",
+			"-i",
+			pathInside(voiceDir, block.audioFile),
+			"-ar",
+			"44100",
+			"-ac",
+			"1",
+			"-c:a",
+			"pcm_s16le",
+			wav,
+		]);
 		entries.push(wav);
 		clock += block.durationSec;
 	}
 	const tail = totalSec - clock;
 	if (tail > 0.005) {
 		const sil = path.join(workDir, "sil-tail.wav");
-		await run(["-y", "-f", "lavfi", "-i", `anullsrc=r=44100:cl=mono`, "-t", tail.toFixed(3), "-c:a", "pcm_s16le", sil]);
+		await run([
+			"-y",
+			"-f",
+			"lavfi",
+			"-i",
+			`anullsrc=r=44100:cl=mono`,
+			"-t",
+			tail.toFixed(3),
+			"-c:a",
+			"pcm_s16le",
+			sil,
+		]);
 		entries.push(sil);
 	}
 	const listPath = path.join(workDir, "concat.txt");
-	fs.writeFileSync(listPath, entries.map((e) => `file '${e}'`).join("\n"));
-	await run(["-y", "-f", "concat", "-safe", "0", "-i", listPath, "-ar", "44100", "-ac", "1", "-c:a", "pcm_s16le", outPath]);
+	fs.writeFileSync(listPath, entries.map(concatFileLine).join("\n"));
+	await run([
+		"-y",
+		"-f",
+		"concat",
+		"-safe",
+		"0",
+		"-protocol_whitelist",
+		"file",
+		"-i",
+		listPath,
+		"-ar",
+		"44100",
+		"-ac",
+		"1",
+		"-c:a",
+		"pcm_s16le",
+		outPath,
+	]);
 	return outPath;
 }
 
@@ -44,10 +97,24 @@ export async function mixAudio({ narrationWav, music, outPath }) {
 	const truePeakDb = -1.5;
 	if (!music?.track || !fs.existsSync(music.track)) {
 		if (music?.track) console.warn(`music track not found, mixing voice only: ${music.track}`);
-		await run(["-y", "-i", narrationWav, "-af", `loudnorm=I=${voiceLufs}:TP=${truePeakDb}:LRA=11`, "-ar", "44100", "-ac", "2", "-c:a", "pcm_s16le", outPath]);
+		await run([
+			"-y",
+			"-i",
+			narrationWav,
+			"-af",
+			`loudnorm=I=${voiceLufs}:TP=${truePeakDb}:LRA=11`,
+			"-ar",
+			"44100",
+			"-ac",
+			"2",
+			"-c:a",
+			"pcm_s16le",
+			outPath,
+		]);
 		return outPath;
 	}
 	const musicDb = music.gainDb ?? -23;
+	if (!Number.isFinite(musicDb)) throw new Error("music.gainDb must be a finite number");
 	const dur = await probeDuration(narrationWav);
 	const filter = [
 		`[0:a]aformat=channel_layouts=mono,asplit=2[v][vkey]`,
@@ -57,9 +124,22 @@ export async function mixAudio({ narrationWav, music, outPath }) {
 		`[mix]loudnorm=I=${voiceLufs}:TP=${truePeakDb}:LRA=11[out]`,
 	].join(";");
 	await run([
-		"-y", "-i", narrationWav, "-i", music.track,
-		"-filter_complex", filter, "-map", "[out]",
-		"-ar", "44100", "-ac", "2", "-c:a", "pcm_s16le", outPath,
+		"-y",
+		"-i",
+		narrationWav,
+		"-i",
+		music.track,
+		"-filter_complex",
+		filter,
+		"-map",
+		"[out]",
+		"-ar",
+		"44100",
+		"-ac",
+		"2",
+		"-c:a",
+		"pcm_s16le",
+		outPath,
 	]);
 	return outPath;
 }

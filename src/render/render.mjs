@@ -4,6 +4,7 @@ import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { flowOutDir } from "../config.mjs";
 import { run } from "../media/encode.mjs";
+import { pathInside } from "../security/paths.mjs";
 
 // Local render, viraloop serverRender.js recipe: memoized bundle, ensureBrowser (Remotion manages
 // its own Chromium), explicit concurrency + offthread cache, jpegQuality 95 for crisp UI text.
@@ -15,10 +16,28 @@ const bundleCache = new Map();
 export async function syncRenderedAudio({ videoPath, audioPath, durationSec }) {
 	const synced = path.join(path.dirname(videoPath), `.audio-synced-${path.basename(videoPath)}`);
 	await run([
-		"-y", "-i", videoPath, "-i", audioPath,
-		"-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy",
-		"-c:a", "aac", "-b:a", "192k", "-af", "apad", "-t", String(durationSec),
-		"-movflags", "+faststart", synced,
+		"-y",
+		"-i",
+		videoPath,
+		"-i",
+		audioPath,
+		"-map",
+		"0:v:0",
+		"-map",
+		"1:a:0",
+		"-c:v",
+		"copy",
+		"-c:a",
+		"aac",
+		"-b:a",
+		"192k",
+		"-af",
+		"apad",
+		"-t",
+		String(durationSec),
+		"-movflags",
+		"+faststart",
+		synced,
 	]);
 	fs.renameSync(synced, videoPath);
 }
@@ -43,6 +62,9 @@ export async function renderFlow(flow, config, { mode = "proof" } = {}) {
 	const timelinePath = path.join(composeDir, "timeline.json");
 	if (!fs.existsSync(timelinePath)) throw new Error(`no timeline for ${flow.id}: run compose first`);
 	const timeline = JSON.parse(fs.readFileSync(timelinePath));
+	pathInside(composeDir, timeline.assets.mezzanine);
+	const audioPath = pathInside(composeDir, timeline.assets.audio);
+	if (timeline.brand?.logo) pathInside(composeDir, timeline.brand.logo);
 
 	const { renderMedia, selectComposition, ensureBrowser } = await import("@remotion/renderer");
 	await ensureBrowser();
@@ -54,9 +76,14 @@ export async function renderFlow(flow, config, { mode = "proof" } = {}) {
 	fs.mkdirSync(renderDir, { recursive: true });
 	const proof = mode === "proof";
 	const outPath = path.join(renderDir, proof ? "proof.mp4" : "final-4k.mp4");
-	const concurrency = Math.max(2, Number(process.env.RENDER_CONCURRENCY) || Math.min(8, os.cpus().length - 2));
+	const concurrency = Math.max(
+		2,
+		Number(process.env.RENDER_CONCURRENCY) || Math.min(8, os.cpus().length - 2),
+	);
 
-	console.log(`rendering ${flow.id} (${mode}, ${composition.durationInFrames} frames, concurrency ${concurrency})...`);
+	console.log(
+		`rendering ${flow.id} (${mode}, ${composition.durationInFrames} frames, concurrency ${concurrency})...`,
+	);
 	const t0 = Date.now();
 	await renderMedia({
 		composition,
@@ -75,15 +102,34 @@ export async function renderFlow(flow, config, { mode = "proof" } = {}) {
 	});
 	await syncRenderedAudio({
 		videoPath: outPath,
-		audioPath: path.join(composeDir, timeline.assets.audio),
+		audioPath,
 		durationSec: composition.durationInFrames / composition.fps,
 	});
 	process.stdout.write("\r");
-	console.log(`rendered in ${((Date.now() - t0) / 1000).toFixed(0)}s -> ${outPath} (${(fs.statSync(outPath).size / 1e6).toFixed(1)}MB)`);
+	console.log(
+		`rendered in ${((Date.now() - t0) / 1000).toFixed(0)}s -> ${outPath} (${(fs.statSync(outPath).size / 1e6).toFixed(1)}MB)`,
+	);
 
 	if (!proof) {
 		const hd = path.join(renderDir, "final-1080p.mp4");
-		await run(["-y", "-i", outPath, "-vf", "scale=1920:1080:flags=lanczos", "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-c:a", "copy", "-movflags", "+faststart", hd]);
+		await run([
+			"-y",
+			"-i",
+			outPath,
+			"-vf",
+			"scale=1920:1080:flags=lanczos",
+			"-c:v",
+			"libx264",
+			"-preset",
+			"slow",
+			"-crf",
+			"18",
+			"-c:a",
+			"copy",
+			"-movflags",
+			"+faststart",
+			hd,
+		]);
 		console.log(`downscaled -> ${hd}`);
 	}
 	return outPath;
