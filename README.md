@@ -18,8 +18,9 @@ Define the steps once. Tutorials Kit drives your app with Playwright, records th
 timings, generates editable narration, and renders a video with Remotion. The same recording produces
 annotated screenshots, captions, and a structured guide that other tools can read.
 
-[Install](#install-from-npm) · [Quick start](#quick-start) · [Configuration](docs/configuration.md) ·
-[Pipeline](docs/pipeline.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+[Ask your agent](#ask-your-agents-to-do-it-for-you) · [Install](#install-from-npm) ·
+[Quick start](#quick-start) · [Configuration](docs/configuration.md) · [Pipeline](docs/pipeline.md) ·
+[Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
 ## What you get
 
@@ -36,6 +37,58 @@ annotated screenshots, captions, and a structured guide that other tools can rea
 This is an early-stage CLI. Flow and artifact formats may change before 1.0. Browser capture and rendering run
 locally; planning and script generation use an OpenAI-compatible provider, and voice synthesis uses
 ElevenLabs. Those services require your own accounts and may incur charges.
+
+## Ask your agents to do it for you
+
+<p>
+  <a href="https://claude.ai/"><img src="https://raw.githubusercontent.com/Side-Products/tutorials-kit/master/docs/assets/agents/claude.svg" alt="Claude" height="36"></a>
+  <a href="https://chatgpt.com/"><img src="https://raw.githubusercontent.com/Side-Products/tutorials-kit/master/docs/assets/agents/chatgpt.svg" alt="ChatGPT" height="36"></a>
+  <a href="https://openai.com/codex/"><img src="https://raw.githubusercontent.com/Side-Products/tutorials-kit/master/docs/assets/agents/codex.svg" alt="Codex" height="36"></a>
+  <a href="https://cursor.com/"><img src="https://raw.githubusercontent.com/Side-Products/tutorials-kit/master/docs/assets/agents/cursor.svg" alt="Cursor" height="36"></a>
+  <a href="https://github.com/features/copilot"><img src="https://raw.githubusercontent.com/Side-Products/tutorials-kit/master/docs/assets/agents/copilot.svg" alt="GitHub Copilot" height="36"></a>
+  <a href="https://gemini.google.com/"><img src="https://raw.githubusercontent.com/Side-Products/tutorials-kit/master/docs/assets/agents/gemini.svg" alt="Gemini" height="36"></a>
+  <a href="https://grok.com/"><img src="https://raw.githubusercontent.com/Side-Products/tutorials-kit/master/docs/assets/agents/grok.svg" alt="Grok" height="36"></a>
+  <a href="https://x.com/grok"><img src="https://raw.githubusercontent.com/Side-Products/tutorials-kit/master/docs/assets/agents/x.svg" alt="Grok on X" height="36"></a>
+</p>
+
+**Copy this prompt into your preferred assistant.** Tutorials Kit uses ordinary files and CLI commands, so the
+instructions work across agents. An agent with access to your project and a terminal can run the workflow; a
+chat-only assistant can give you the files and commands to run locally.
+
+```text
+Set up Tutorials Kit in my existing app and create a narrated tutorial video
+and a written guide for one useful user workflow.
+
+Read https://github.com/Side-Products/tutorials-kit#readme, then the installed
+package's docs/configuration.md and templates/tutorials.config.example.mjs.
+
+1. Inspect my project, find how to start the app, and identify the workflow
+   to demonstrate. Ask only for missing workflow details, app access, or
+   provider setup.
+2. Install tutorials-kit as a dev dependency with this project's package
+   manager. Check Node.js 22+, Playwright Chromium, and FFmpeg with libx264/AAC.
+3. Create tutorials/tutorials.config.mjs and a flow in tutorials/flows/.
+   Inspect the real UI for selectors. Use a demo account and synthetic data.
+   Keep tutorials/.env, session state, and generated output out of Git;
+   tell me which credentials to set locally without asking me to paste them.
+4. Start the app and run:
+   npx tutorials-kit check <flow-id> --config tutorials/tutorials.config.mjs
+   Fix failures before recording.
+5. Run record and script for that flow with the same --config. Review the
+   narration, then run voice, compose, render, and docs in that order.
+   If provider credentials are missing, finish setup and recording, then
+   explain exactly what is needed to complete narration and rendering.
+6. Verify the video plays with narration and the guide, screenshots, and
+   captions exist. Return their paths and the exact commands to regenerate
+   them. Report any unfinished steps clearly.
+
+If you cannot access my files or terminal, provide the file contents and
+commands for me to run, and distinguish those instructions from work you
+actually completed.
+```
+
+The assistant you choose is separate from the pipeline's
+[LLM and voice provider configuration](docs/configuration.md#environment-variables).
 
 ## Install from npm
 
