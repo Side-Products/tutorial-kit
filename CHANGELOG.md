@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3 (2026-09-11)
+
+- Add an original folded play-ribbon icon and matching Tutorials Kit logos for light and dark backgrounds.
+- Show the logo in the README and provide downloadable brand assets, a favicon, and an Apple touch icon.
+
 ## 0.1.2 (2026-09-11)
 
 - Use the Tutorials Kit name throughout the documentation and local demo.

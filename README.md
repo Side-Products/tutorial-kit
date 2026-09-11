@@ -1,4 +1,9 @@
-# Tutorials Kit
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Side-Products/tutorials-kit/master/docs/assets/tutorials-kit-logo-dark.png">
+    <img src="https://raw.githubusercontent.com/Side-Products/tutorials-kit/master/docs/assets/tutorials-kit-logo-light.png" alt="Tutorials Kit" width="520">
+  </picture>
+</h1>
 
 **Turn a browser workflow into a narrated video and a written guide.**
 
@@ -258,6 +263,8 @@ lives in `src/`, CLI entry points in `bin/`, examples in `examples/`, and histor
 Contributions are welcome: start with [CONTRIBUTING.md](CONTRIBUTING.md). For bugs or feature proposals,
 [open an issue](https://github.com/Side-Products/tutorials-kit/issues). Report vulnerabilities privately as
 described in [SECURITY.md](SECURITY.md).
+
+The logo and icon are available in [Brand assets](docs/branding.md).
 
 ## License
 
